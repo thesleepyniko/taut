@@ -20,6 +20,7 @@ const mainResult = await Bun.build({
   target: 'node',
   format: 'cjs',
   external: ['electron'],
+  banner: '// @ts-nocheck',
 })
 
 if (!mainResult.success) {

@@ -45,8 +45,8 @@ export type Unsubscribe = () => void
  * Electron uses IPC, Userscript uses GM_* storage APIs
  */
 export interface TautBridge {
-  /** Backend environment type: 'electron' or 'userscript' */
-  readonly env: 'electron' | 'userscript'
+  /** Backend environment type */
+  readonly env: 'electron' | 'extension' | 'userscript'
 
   /**
    * Initialize the backend

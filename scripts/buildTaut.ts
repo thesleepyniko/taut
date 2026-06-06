@@ -1,0 +1,202 @@
+#!/usr/bin/env bun
+
+import path from 'path'
+import fs from 'fs'
+import { mkdir } from 'fs/promises'
+
+if (!('Bun' in globalThis)) {
+  console.error('This script must be run with Bun.')
+  process.exit(1)
+}
+
+const ROOT = path.join(import.meta.dir, '..')
+const PLUGINS_DIR = path.join(ROOT, 'plugins')
+const DIST_DIR = path.join(ROOT, 'dist')
+
+await mkdir(DIST_DIR, { recursive: true })
+
+const TAUT_SOURCE_ORIGIN = 'taut:///'
+
+function rewriteSourcePath(p: string): string {
+  let s = p.replace(/^\.\//, '')
+  s = s.replace(/^core\//, '') // core/renderer/main.ts -> renderer/main.ts
+  return TAUT_SOURCE_ORIGIN + s
+}
+
+function rewriteInlineSourcemaps(code: string): string {
+  const re = /sourceMappingURL=data:application\/json;base64,([A-Za-z0-9+/=]+)/g
+  return code.replace(re, (_full, b64: string) => {
+    const map = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'))
+    if (Array.isArray(map.sources)) {
+      delete map.sourceRoot
+      map.sources = map.sources.map((s: string) => rewriteSourcePath(s))
+    }
+    const next = Buffer.from(JSON.stringify(map), 'utf8').toString('base64')
+    return `sourceMappingURL=data:application/json;base64,${next}`
+  })
+}
+
+const globalPluginShim = {
+  name: 'global-plugin-shim',
+  setup(build: any) {
+    build.onLoad({ filter: /core\/Plugin\.ts$/ }, () => ({
+      contents: `
+        export const TautPlugin = globalThis.TautPlugin
+        export default TautPlugin
+      `,
+      loader: 'js',
+    }))
+  },
+}
+
+// Step 1: bundle plugins
+async function bundlePlugins(debug: boolean): Promise<Record<string, string>> {
+  const plugins: Record<string, string> = {}
+  if (!fs.existsSync(PLUGINS_DIR)) return plugins
+
+  for (const file of fs
+    .readdirSync(PLUGINS_DIR)
+    .filter((f) => /\.[tj]sx?$/.test(f))) {
+    const name = path.basename(file, path.extname(file))
+    console.log(`[build-taut] Bundling plugin: ${name}`)
+
+    const result = await Bun.build({
+      entrypoints: [path.join(PLUGINS_DIR, file)],
+      target: 'browser',
+      format: 'esm',
+      minify: true,
+      sourcemap: debug ? 'inline' : 'none',
+      plugins: [globalPluginShim],
+      define: { process: 'undefined' },
+    })
+
+    if (!result.success) {
+      console.error(
+        `[build-taut] Failed to bundle plugin ${name}:`,
+        result.logs
+      )
+      continue
+    }
+
+    let code = await result.outputs[0].text()
+    code = '(() => {\n' + code + '\n})()'
+    code = code.replace(
+      /export\s*{\s*(\w+)\s+as\s+default\s*};?/g,
+      'return $1;'
+    )
+    code = code.replace(/export\s+default\s+(\w+);?/g, 'return $1;')
+    plugins[name] = code
+  }
+
+  return plugins
+}
+
+// Step 2: bundle renderer (injected as inline script by Tampermonkey path)
+async function bundleRenderer(debug: boolean): Promise<string> {
+  console.log('[build-taut] Bundling renderer...')
+
+  const result = await Bun.build({
+    entrypoints: [path.join(ROOT, 'core', 'renderer', 'main.ts')],
+    target: 'browser',
+    format: 'iife',
+    minify: true,
+    sourcemap: debug ? 'inline' : 'none',
+    define: {
+      'process': 'undefined',
+      'import.meta.url': 'self.location.href',
+    },
+  })
+
+  if (!result.success) {
+    console.error('[build-taut] Failed to bundle renderer:', result.logs)
+    process.exit(1)
+  }
+
+  let code = await result.outputs[0].text()
+  // The renderer is injected as an inline <script>, which DevTools would
+  // otherwise attribute to the page (app.slack.com). Naming it with a
+  // sourceURL gives the generated script a stable identity under the taut://
+  // tree instead of an anonymous inline entry under Slack.
+  if (debug) code += `\n//# sourceURL=${TAUT_SOURCE_ORIGIN}renderer.js\n`
+  return code
+}
+
+// Step 3: bundle the unified entry
+async function bundleEntry(
+  plugins: Record<string, string>,
+  rendererCode: string,
+  header: string,
+  debug: boolean
+): Promise<string> {
+  console.log('[build-taut] Bundling entry...')
+
+  const defaultConfig = await Bun.file(
+    path.join(ROOT, 'cli', 'default-config.jsonc')
+  ).text()
+  const defaultUserCss = await Bun.file(
+    path.join(ROOT, 'cli', 'default-user.css')
+  ).text()
+
+  const result = await Bun.build({
+    entrypoints: [path.join(ROOT, 'core', 'taut', 'main.ts')],
+    target: 'browser',
+    format: 'iife',
+    minify: true,
+    sourcemap: debug ? 'inline' : 'none',
+    define: {
+      '__TAUT_RENDERER_CODE__': JSON.stringify(rendererCode),
+      '__TAUT_BUNDLED_PLUGINS__': JSON.stringify(plugins),
+      '__TAUT_DEFAULT_CONFIG__': JSON.stringify(defaultConfig),
+      '__TAUT_DEFAULT_USER_CSS__': JSON.stringify(defaultUserCss),
+      'process': 'undefined',
+      'import.meta.url': 'self.location.href',
+    },
+    banner: header,
+  })
+
+  if (!result.success) {
+    console.error('[build-taut] Failed to bundle entry:', result.logs)
+    process.exit(1)
+  }
+
+  return result.outputs[0].text()
+}
+
+async function build(debug: boolean) {
+  const label = debug ? 'debug' : 'release'
+  console.log(`[build-taut] Starting ${label} build...`)
+
+  const version = (await Bun.file(path.join(ROOT, 'package.json')).json())
+    .version
+  const headerTemplate = await Bun.file(
+    path.join(ROOT, 'core', 'taut', 'header.ts')
+  ).text()
+  const header = headerTemplate
+    .replace('$VERSION', version)
+    .replace('$DESCRIPTION_SUFFIX', debug ? ' (debug build)' : '')
+
+  const [plugins, rendererCode] = await Promise.all([
+    bundlePlugins(debug),
+    bundleRenderer(debug),
+  ])
+
+  console.log(
+    `[build-taut] ${Object.keys(plugins).length} plugins, renderer ${(Buffer.byteLength(rendererCode) / 1024).toFixed(1)} KB`
+  )
+
+  let code = await bundleEntry(plugins, rendererCode, header, debug)
+  // Rewrite all inline sourcemaps (outer entry + embedded renderer + plugins)
+  // so every Taut source groups under one taut:// tree in DevTools.
+  if (debug) code = rewriteInlineSourcemaps(code)
+  const outFile = debug
+    ? path.join(DIST_DIR, 'taut.debug.js')
+    : path.join(DIST_DIR, 'taut.js')
+
+  await Bun.write(outFile, code)
+  console.log(
+    `[build-taut] ${path.basename(outFile)}: ${(Buffer.byteLength(code) / 1024).toFixed(1)} KB`
+  )
+}
+
+await Promise.all([build(false), build(true)])
+console.log('[build-taut] Done!')

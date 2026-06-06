@@ -46,27 +46,47 @@ export const reactPromise: Promise<typeof import('react')> = (async () => {
       }
 
       if (!__original) {
-        const componentReplacers = [
-          ...componentReplacements
-            .entries()
-            .filter(([matcher, _]) => matcher(component))
-            .map(([_, replacer]) => replacer),
-        ]
-        if (componentReplacers.length > 0) {
-          const originalComponent = getOriginalComponentObject(
-            component
-          ) as unknown as ComponentType
+        // Memoize the resolved component per component identity
+        // so we only run matchers once per type
+        const cacheable =
+          typeof component === 'object' || typeof component === 'function'
 
-          const replacedComponent = componentReplacers.reduce(
-            (currentComponent, replacer) =>
-              applyReplacerWithCache(replacer, currentComponent),
-            originalComponent
-          )
+        if (cacheable && notPatchedCache.has(component)) {
+          // Known to match no replacers; fall through to the default return.
+        } else if (cacheable && resolvedComponentCache.has(component)) {
           return Reflect.apply(target, thisArg, [
-            replacedComponent,
+            resolvedComponentCache.get(component),
             props,
             ...children,
           ])
+        } else {
+          const componentReplacers = [
+            ...componentReplacements
+              .entries()
+              .filter(([matcher, _]) => matcher(component))
+              .map(([_, replacer]) => replacer),
+          ]
+          if (componentReplacers.length > 0) {
+            const originalComponent = getOriginalComponentObject(
+              component
+            ) as unknown as ComponentType
+
+            const replacedComponent = componentReplacers.reduce(
+              (currentComponent, replacer) =>
+                applyReplacerWithCache(replacer, currentComponent),
+              originalComponent
+            )
+            if (cacheable) {
+              resolvedComponentCache.set(component, replacedComponent)
+            }
+            return Reflect.apply(target, thisArg, [
+              replacedComponent,
+              props,
+              ...children,
+            ])
+          } else if (cacheable) {
+            notPatchedCache.add(component)
+          }
         }
       }
 
@@ -268,6 +288,17 @@ export type componentReplacer<P = any> = (
 ) => ComponentType<P>
 
 const componentReplacements = new Map<componentMatcher, componentReplacer>()
+
+// components that match no replacers
+let notPatchedCache = new WeakSet<object>()
+// component -> its replaced component
+let resolvedComponentCache = new WeakMap<object, ComponentType>()
+
+function invalidateComponentCaches() {
+  notPatchedCache = new WeakSet<object>()
+  resolvedComponentCache = new WeakMap<object, ComponentType>()
+}
+
 const originalComponentSymbol = Symbol.for('taut.originalComponent')
 
 const originalComponentObjectCache = new WeakMap<any, originalComponentObject>()
@@ -359,10 +390,12 @@ function patchComponent<P = {}>(
 
   componentReplacements.set(matcherFunc, replacement)
 
+  invalidateComponentCaches()
   dirtyMemoizationCache()
   console.log(`[Taut] patchComponent: Patched component`, componentReplacements)
   return () => {
     componentReplacements.delete(matcherFunc)
+    invalidateComponentCaches()
     dirtyMemoizationCache()
     console.log(`[Taut] patchComponent: Unpatched component`)
   }

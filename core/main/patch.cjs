@@ -256,6 +256,7 @@ electron.Menu.setApplicationMenu = function (menu) {
   return originalSetApplicationMenu.call(this, newMenu)
 }
 const originalSetWindowMenu = electron.BrowserWindow.prototype.setMenu
+/** @param {electron.Menu | null} menu */
 electron.BrowserWindow.prototype.setMenu = function (menu) {
   if (menu == null) {
     return originalSetWindowMenu.call(this, menu)

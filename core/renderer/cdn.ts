@@ -58,7 +58,6 @@ const initTheme = () => {
   updateMonacoTheme()
   const observer = new MutationObserver(updateMonacoTheme)
   observer.observe(document.body, {
-    attributes: true,
     attributeFilter: ['class', 'style'],
   })
 }

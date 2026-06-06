@@ -4,3 +4,6 @@ repomix-output.*
 tmp*
 **/deps/
 dist/
+.wakatime-project
+extension/chrome/taut.js
+extension/firefox/taut.js
