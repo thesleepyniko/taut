@@ -98,7 +98,6 @@ export const UserscriptBackend: TautBridge = {
     userCssCallbacks.add(cb)
     return () => userCssCallbacks.delete(cb)
   },
-
 }
 
 const pluginCodeCallbacks = new Set<PluginCodeCallback>()

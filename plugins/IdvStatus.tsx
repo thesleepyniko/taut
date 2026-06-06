@@ -174,9 +174,7 @@ export default class IdvStatus extends TautPlugin {
     // Create the fetch promise
     const fetchPromise = (async (): Promise<IdvStatusType> => {
       try {
-        const response = await fetch(
-          `${IDV_API_URL}?slack_id=${slackId}`
-        )
+        const response = await fetch(`${IDV_API_URL}?slack_id=${slackId}`)
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)

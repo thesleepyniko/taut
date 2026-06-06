@@ -142,5 +142,4 @@ export const extensionBridge: TautBridge = {
     userCssCallbacks.add(cb)
     return () => userCssCallbacks.delete(cb)
   },
-
 }

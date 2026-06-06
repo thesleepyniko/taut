@@ -5,32 +5,20 @@
   "description": "Client mod for Slack",
   "author": "Jeremy Woolley",
   "homepage_url": "https://jer.app/taut",
-  "host_permissions": [
-    "https://app.slack.com/*"
-  ],
-  "permissions": [
-    "storage"
-  ],
+  "host_permissions": ["https://app.slack.com/*"],
+  "permissions": ["storage"],
   "content_scripts": [
     {
-      "matches": [
-        "https://app.slack.com/client/*"
-      ],
-      "js": [
-        "content.js"
-      ],
+      "matches": ["https://app.slack.com/client/*"],
+      "js": ["content.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "taut.js"
-      ],
-      "matches": [
-        "https://app.slack.com/*"
-      ],
+      "resources": ["taut.js"],
+      "matches": ["https://app.slack.com/*"],
       "use_dynamic_url": true
     }
   ]

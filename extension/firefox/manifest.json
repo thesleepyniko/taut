@@ -18,22 +18,14 @@
     "https://app.slack.com/*"
   ],
   "background": {
-    "scripts": [
-      "background.js"
-    ]
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://app.slack.com/*"
-      ],
-      "js": [
-        "content-storage.js"
-      ],
+      "matches": ["https://app.slack.com/*"],
+      "js": ["content-storage.js"],
       "run_at": "document_start"
     }
   ],
-  "web_accessible_resources": [
-    "taut.js"
-  ]
+  "web_accessible_resources": ["taut.js"]
 }
