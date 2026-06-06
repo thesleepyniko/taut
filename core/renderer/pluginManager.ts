@@ -2,9 +2,14 @@
 // Runs in the browser page context
 // Loads and manages plugins via TautBridge
 
-import { findExport, findByProps, commonModules } from './webpack'
-import { findComponent, patchComponent } from './react'
-import { addSettingsTab } from './settings'
+import { findExportPromise, findByPropsPromise } from './webpack'
+import {
+  reactPromise,
+  findComponentPromise,
+  patchComponentPromise,
+  reactDOMPromise,
+  reactDOMClientPromise,
+} from './react'
 import { setStyle, removeStyle } from './css'
 import { TypedEventTarget } from './helpers'
 
@@ -14,24 +19,32 @@ import {
   type TautPluginConfig,
 } from '../Plugin'
 import type { TautBridge } from '../shared/TautBridge'
-import type { ConfigStore } from '../shared/ConfigStore'
+import type { ConfigStore } from './configStore'
 
 const global = globalThis as any
 global.TautPlugin = TautPlugin
 
-export const TautAPI = {
-  setStyle,
-  removeStyle,
-  findExport,
-  findByProps,
-  findComponent,
-  patchComponent,
-  commonModules,
-  fetch: (input: RequestInfo | URL, init?: RequestInit) =>
-    window.TautBridge.fetch(input, init),
-}
-export type TautAPI = typeof TautAPI
-global.TautAPI = TautAPI
+export const tautAPIPromise = (async () => {
+  const TautAPI = {
+    setStyle,
+    removeStyle,
+    findExport: await findExportPromise,
+    findByProps: await findByPropsPromise,
+    findComponent: await findComponentPromise,
+    patchComponent: await patchComponentPromise,
+    commonModules: {
+      react: await reactPromise,
+      reactDOM: await reactDOMPromise,
+      reactDOMClient: await reactDOMClientPromise,
+    },
+    fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+      window.TautBridge.fetch(input, init),
+  }
+  global.TautAPI = TautAPI
+  console.log('[Taut] TautAPI initialized', TautAPI)
+  return TautAPI
+})()
+export type TautAPI = Awaited<typeof tautAPIPromise>
 
 export class PluginManager extends TypedEventTarget<{
   pluginInfoChanged: PluginInfo
@@ -50,8 +63,8 @@ export class PluginManager extends TypedEventTarget<{
   ) {
     super()
 
-    this.bridge.onPluginCode((name, code) => {
-      this.loadPluginCode(name, code)
+    this.bridge.onPluginCode(async (name, code) => {
+      await this.loadPluginCode(name, code)
     })
 
     this.configStore.onConfigChange((newConfig) => {
@@ -61,15 +74,19 @@ export class PluginManager extends TypedEventTarget<{
     })
   }
 
-  loadPluginCode(name: string, code: string): boolean {
+  async loadPluginCode(name: string, code: string): Promise<boolean> {
     console.log(`[Taut] Loading plugin: ${name}`)
 
     try {
-      const config = this.configStore.getConfig().plugins[name]
+      const config = this.configStore.getConfig().plugins[name] ?? {
+        enabled: false,
+      }
 
-      const PluginClass = new Function(
-        `return (${code}).default`
-      )() as TautPluginConstructor
+      const result = new Function(`return ${code}`)()
+      const PluginClass =
+        result.prototype instanceof TautPlugin
+          ? (result as TautPluginConstructor)
+          : (result.default as TautPluginConstructor)
 
       if (
         typeof PluginClass !== 'function' ||
@@ -90,8 +107,11 @@ export class PluginManager extends TypedEventTarget<{
       let instance: TautPlugin | null = null
 
       if (config.enabled) {
+        // Wait for React before instantiating plugins (they may use JSX)
+        await reactPromise
+
         try {
-          instance = new PluginClass(TautAPI, config)
+          instance = new PluginClass(await tautAPIPromise, config)
           instance.start()
           console.log(`[Taut] Plugin ${name} started successfully`)
         } catch (err) {
@@ -109,7 +129,7 @@ export class PluginManager extends TypedEventTarget<{
     }
   }
 
-  updatePluginConfig(name: string, newConfig: TautPluginConfig) {
+  async updatePluginConfig(name: string, newConfig: TautPluginConfig) {
     console.log(`[Taut] Updating config for plugin: ${name}`)
 
     const existing = this.plugins.get(name)
@@ -130,8 +150,11 @@ export class PluginManager extends TypedEventTarget<{
     let instance: TautPlugin | null = null
 
     if (newConfig.enabled) {
+      // Wait for React before instantiating plugins (they may use JSX)
+      await reactPromise
+
       try {
-        instance = new existing.PluginClass(TautAPI, newConfig)
+        instance = new existing.PluginClass(await tautAPIPromise, newConfig)
         instance.start()
         console.log(
           `[Taut] Plugin ${name} started successfully with new config`

@@ -2,13 +2,123 @@
 // Provides utilities for finding and patching React components
 // Implements component patching via React.createElement proxy
 
-import type { Root } from 'react-dom/client'
-import { findExport, React, ReactDOM, ReactDOMClient } from './webpack'
+import { findExportPromise, waitForExport } from './webpack'
 
 const global = globalThis as any
-const __REACT_DEVTOOLS_GLOBAL_HOOK__ = global.__REACT_DEVTOOLS_GLOBAL_HOOK__
 
-global.React = React // Makes JSX work anywhere
+// React Promise - waits for React, patches createElement, then resolves
+
+function isReact(exp: any): exp is typeof import('react') {
+  return (
+    exp &&
+    typeof exp === 'object' &&
+    'createElement' in exp &&
+    'Component' in exp &&
+    'useState' in exp
+  )
+}
+export const reactPromise: Promise<typeof import('react')> = (async () => {
+  const React = await waitForExport(isReact)
+
+  // Proxy React.createElement to intercept component creation
+  React.createElement = new Proxy(React.createElement, {
+    apply(
+      target: typeof React.createElement,
+      thisArg: any,
+      [component, props, ...children]: [
+        component: ComponentType | originalComponentObject,
+        props: any,
+        ...children: any[],
+      ]
+    ) {
+      const __original = props && props['__original']
+      if (__original) {
+        delete props['__original']
+      }
+
+      if (isOriginalComponentObject(component)) {
+        const originalComponent = component['originalComponent']
+        return Reflect.apply(target, thisArg, [
+          originalComponent,
+          props,
+          ...children,
+        ])
+      }
+
+      if (!__original) {
+        const componentReplacers = [
+          ...componentReplacements
+            .entries()
+            .filter(([matcher, _]) => matcher(component))
+            .map(([_, replacer]) => replacer),
+        ]
+        if (componentReplacers.length > 0) {
+          const originalComponent = getOriginalComponentObject(
+            component
+          ) as unknown as ComponentType
+
+          const replacedComponent = componentReplacers.reduce(
+            (currentComponent, replacer) =>
+              applyReplacerWithCache(replacer, currentComponent),
+            originalComponent
+          )
+          return Reflect.apply(target, thisArg, [
+            replacedComponent,
+            props,
+            ...children,
+          ])
+        }
+      }
+
+      return Reflect.apply(target, thisArg, [component, props, ...children])
+    },
+  })
+
+  global.React = React
+  return React
+})()
+
+declare global {
+  namespace React {
+    interface Attributes {
+      __original?: true
+    }
+  }
+}
+
+// ReactDOM Promises
+
+function isReactDOM(exp: any): exp is typeof import('react-dom') {
+  return (
+    exp && typeof exp === 'object' && 'render' in exp && 'createPortal' in exp
+  )
+}
+
+function isReactDOMClient(exp: any): exp is typeof import('react-dom/client') {
+  return (
+    exp &&
+    typeof exp === 'object' &&
+    'createRoot' in exp &&
+    'hydrateRoot' in exp
+  )
+}
+
+export const reactDOMPromise: Promise<typeof import('react-dom')> =
+  (async () => {
+    const ReactDOM = await waitForExport(isReactDOM)
+    global.ReactDOM = ReactDOM
+    return ReactDOM
+  })()
+
+export const reactDOMClientPromise: Promise<typeof import('react-dom/client')> =
+  (async () => {
+    const ReactDOMClient = await waitForExport(isReactDOMClient)
+    global.ReactDOMClient = ReactDOMClient
+    return ReactDOMClient
+  })()
+
+// Component Finding
+// If using this outside of a plugin, ensure your desired component has loaded first
 
 type filter = (exp: any) => boolean
 
@@ -40,36 +150,36 @@ function componentFilter(name: string, filter?: filter) {
   return func
 }
 
-/**
- * Find React components by their display name
- * @param name - Display name of the component
- * @param all - Whether to return all matches or just the first (default: false)
- * @param filter - Optional additional filter function
- */
+export const findComponentPromise = (async () => {
+  const findExport = await findExportPromise
+  function findComponent<P extends {}>(
+    name: string,
+    all?: false,
+    filter?: filter
+  ): React.ComponentType<P>
+  function findComponent<P extends {}>(
+    name: string,
+    all: true,
+    filter?: filter
+  ): React.ComponentType<P>[]
+  function findComponent(name: string, all = false, filter?: filter) {
+    const func = componentFilter(name, filter)
 
-export function findComponent<P extends {}>(
-  name: string,
-  all?: false,
-  filter?: filter
-): React.ComponentType<P>
-export function findComponent<P extends {}>(
-  name: string,
-  all: true,
-  filter?: filter
-): React.ComponentType<P>[]
-export function findComponent(name: string, all = false, filter?: filter) {
-  const func = componentFilter(name, filter)
-
-  if (all) {
-    return findExport(func, true)
-  } else {
-    const result = findExport(func)
-    if (!result) throw new Error(`[Taut] Could not find component: ${name}`)
-    return result
+    if (all) {
+      return findExport(func, true)
+    } else {
+      const result = findExport(func)
+      if (!result) throw new Error(`[Taut] Could not find component: ${name}`)
+      return result
+    }
   }
-}
+  global.findComponent = findComponent
+  return findComponent
+})()
 
-export function getRootFiber() {
+// Fiber Utilities (promise-wrapped)
+
+function getRootFiber() {
   const container = document.querySelector('.p-client_container')
   if (!container) throw new Error('Could not find root container')
   const key = Object.keys(container).find((k) =>
@@ -79,20 +189,28 @@ export function getRootFiber() {
   const rootFiber = (container as any)[key]
   return rootFiber
 }
-// getFiberRoot().current === getRootFiber()
-export function getFiberRoot() {
-  return [...__REACT_DEVTOOLS_GLOBAL_HOOK__.getFiberRoots(1)][0]
-}
 
-const tempRoot = ReactDOMClient.createRoot(document.createElement('div'))
-tempRoot.unmount()
-const ReactDOMRoot = tempRoot.constructor as new (fiberRoot: any) => Root
-export function getRoot() {
-  const fiberRoot = getFiberRoot()
-  return new ReactDOMRoot(fiberRoot)
-}
+// function getFiberRoot() {
+//   const __REACT_DEVTOOLS_GLOBAL_HOOK__ = global.__REACT_DEVTOOLS_GLOBAL_HOOK__
+//   if (!__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+//     throw new Error('React DevTools hook not found')
+//   }
+//   return [...__REACT_DEVTOOLS_GLOBAL_HOOK__?.getFiberRoots?.(1)]?.[0]
+// }
 
-export function dirtyMemoizationCache() {
+// export const getRootPromise = (async () => {
+//   const ReactDOMClient = await reactDOMClientPromise
+
+//   return function getRoot() {
+//     const tempRoot = ReactDOMClient.createRoot(document.createElement('div'))
+//     tempRoot.unmount()
+//     const ReactDOMRoot = tempRoot.constructor as new (fiberRoot: any) => Root
+//     const fiberRoot = getFiberRoot()
+//     return new ReactDOMRoot(fiberRoot)
+//   }
+// })()
+
+function dirtyMemoizationCache() {
   const rootFiber = getRootFiber()
 
   const poison = (node: any) => {
@@ -106,13 +224,10 @@ export function dirtyMemoizationCache() {
   poison(rootFiber)
 }
 
+// Component Patching
+
 export type ComponentType<P = any> = React.ComponentType<P> | string
 
-/**
- * Get the name of a React component (not string)
- * Works on any type, won't misfire on non-components
- * Use this for any logic that depends on the component name
- */
 function getComponentName(component: any): string | null {
   if (!component) return null
 
@@ -139,11 +254,7 @@ function getComponentName(component: any): string | null {
 
   return null
 }
-/**
- * Get the display name of a React component (including string components)
- * Will always return something, even if it's just "Component"
- * Use this for anything displaying component names
- */
+
 function getDisplayName(component: ComponentType): string {
   if (typeof component === 'string') return component
   const name = getComponentName(component)
@@ -165,6 +276,7 @@ type originalComponentObject = {
   originalComponent: ComponentType
   displayName: string
 }
+
 function getOriginalComponentObject(
   component: ComponentType
 ): originalComponentObject {
@@ -181,6 +293,7 @@ function getOriginalComponentObject(
   originalComponentObjectCache.set(component, obj)
   return obj
 }
+
 function isOriginalComponentObject(
   component: any
 ): component is originalComponentObject {
@@ -197,10 +310,6 @@ const replacerResultCache = new WeakMap<
   Map<ComponentType, ComponentType>
 >()
 
-/**
- * Applies a replacer function to a component, caching the result.
- * If the result is a function component without a display name, it assigns one.
- */
 function applyReplacerWithCache<P = any>(
   replacer: componentReplacer<P>,
   originalComponent: ComponentType<P>
@@ -216,7 +325,6 @@ function applyReplacerWithCache<P = any>(
 
   const replaced = replacer(originalComponent)
   if (typeof replaced === 'function' && !('displayName' in replaced)) {
-    // Shows up as the original element name with a [Patched] tag in React DevTools
     replaced.displayName = `Patched(${getDisplayName(originalComponent)})`
   }
 
@@ -224,84 +332,7 @@ function applyReplacerWithCache<P = any>(
   return replaced
 }
 
-/**
- * Proxy React.createElement to intercept component creation and apply patches.
- * This allows us to replace components at runtime without modifying the original source.
- */
-React.createElement = new Proxy(React.createElement, {
-  apply(
-    target: typeof React.createElement,
-    thisArg: any,
-    [component, props, ...children]: [
-      component: ComponentType | originalComponentObject,
-      props: any,
-      ...children: any[],
-    ]
-  ) {
-    const __original = props && props['__original']
-    if (__original) {
-      delete props['__original']
-    }
-
-    // This is a special object that is equivalent to the original type without replacement
-    if (isOriginalComponentObject(component)) {
-      const originalComponent = component['originalComponent']
-      return Reflect.apply(target, thisArg, [
-        originalComponent,
-        props,
-        ...children,
-      ])
-    }
-
-    if (!__original) {
-      const componentReplacers = [
-        ...componentReplacements
-          .entries()
-          .filter(([matcher, _]) => {
-            return matcher(component)
-          })
-          .map(([_, replacer]) => replacer),
-      ]
-      if (componentReplacers && componentReplacers.length > 0) {
-        // Can be used in place of the original type, but will not get replaced again
-        const originalComponent = getOriginalComponentObject(
-          component
-        ) as unknown as ComponentType
-
-        const replacedComponent = componentReplacers.reduce(
-          (currentComponent, replacer) =>
-            applyReplacerWithCache(replacer, currentComponent),
-          originalComponent
-        )
-        return Reflect.apply(target, thisArg, [
-          replacedComponent,
-          props,
-          ...children,
-        ])
-      }
-    }
-
-    return Reflect.apply(target, thisArg, [component, props, ...children])
-  },
-})
-declare global {
-  namespace React {
-    interface Attributes {
-      /**
-       * [Taut] Marks this element to use the original component, bypassing any patches.
-       */
-      __original?: true
-    }
-  }
-}
-
-/**
- * Patch a React component to replace it with a custom implementation
- * @param original - Original component to patch
- * @param replacement - Function that takes the original component and returns the patched component
- * @returns Unpatch function to restore the original component
- */
-export function patchComponent<P = {}>(
+function patchComponent<P = {}>(
   matcher:
     | string
     | { displayName?: string; filter?: filter; component?: ComponentType<P> },
@@ -337,8 +368,8 @@ export function patchComponent<P = {}>(
   }
 }
 
-// Expose for debugging in console
-global.findComponent = findComponent
-global.patchComponent = patchComponent
-global.ReactDOM = ReactDOM
-global.ReactDOMClient = ReactDOMClient
+export const patchComponentPromise = (async () => {
+  await reactPromise
+  global.patchComponent = patchComponent
+  return patchComponent
+})()

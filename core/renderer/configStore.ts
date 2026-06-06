@@ -2,7 +2,8 @@
 // In-memory store for config.jsonc and user.css with change notifications
 // Uses jsonc-parser for safe JSONC modifications that preserve comments
 
-import type { TautBridge } from './TautBridge'
+import type { TautBridge } from '../shared/TautBridge'
+import { initJsonc, type JsoncParser } from './cdn'
 
 export interface TautConfig {
   plugins: Record<string, { enabled: boolean } & Record<string, unknown>>
@@ -11,26 +12,6 @@ export interface TautConfig {
 type Listener<T> = (value: T) => void
 type Unsubscribe = () => void
 
-export interface JsoncModule {
-  parse(
-    text: string,
-    errors?: unknown[],
-    options?: { allowTrailingComma?: boolean }
-  ): unknown
-  modify(
-    text: string,
-    path: (string | number)[],
-    value: unknown,
-    options?: {
-      formattingOptions?: { tabSize?: number; insertSpaces?: boolean }
-    }
-  ): { offset: number; length: number; content: string }[]
-  applyEdits(
-    text: string,
-    edits: { offset: number; length: number; content: string }[]
-  ): string
-}
-
 export class ConfigStore {
   private configText = ''
   private userCssText = ''
@@ -38,13 +19,12 @@ export class ConfigStore {
   private configListeners = new Set<Listener<TautConfig>>()
   private configTextListeners = new Set<Listener<string>>()
   private cssListeners = new Set<Listener<string>>()
+  private jsonc!: JsoncParser
 
-  constructor(
-    private bridge: TautBridge,
-    private jsonc: JsoncModule
-  ) {}
+  constructor(private bridge: TautBridge) {}
 
   async init(): Promise<void> {
+    this.jsonc = await initJsonc()
     this.configText = await this.bridge.readConfigText()
     this.userCssText = await this.bridge.readUserCss()
     this.config = this.parseConfig(this.configText)

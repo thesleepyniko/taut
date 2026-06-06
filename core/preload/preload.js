@@ -141,6 +141,7 @@ contextBridge.exposeInMainWorld('TautBridge', ElectronBackend)
 
 // Clear document and prepare for reconstruction
 document.open()
+document.write('<!DOCTYPE html>')
 document.write('')
 document.close()
 

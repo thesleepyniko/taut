@@ -1,11 +1,7 @@
 // Taut CSS Utilities
 // Provides functions to inject and remove CSS styles
 
-import depsCss from './deps/deps.bundle.css'
-
-// @ts-ignore
-import * as deps from './deps/deps.bundle.js'
-const { updateMonacoTheme } = deps as typeof import('./deps')
+import { updateMonacoTheme } from './cdn'
 
 const styleElementIdPrefix = 'taut-css-'
 
@@ -36,5 +32,3 @@ export function removeStyle(key: string) {
   }
   updateMonacoTheme()
 }
-
-setStyle('deps', depsCss)

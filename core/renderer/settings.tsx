@@ -2,20 +2,19 @@
 // Adds a "Taut" tab to Slack's Preferences dialog
 // Shows installed plugins, config info, and credits
 
-import type { ConfigStore } from '../shared/ConfigStore'
-import { findComponent, patchComponent } from './react'
+import {
+  reactPromise,
+  findComponentPromise,
+  patchComponentPromise,
+} from './react'
+import type { ConfigStore } from './configStore'
 import type { PluginInfo, PluginManager } from './pluginManager'
+import { initMonaco, type Monaco } from './cdn'
 
-// @ts-ignore
-import * as deps from './deps/deps.bundle.js'
-const { monaco } = deps as typeof import('./deps')
-
-type Monaco = typeof monaco
 type MonacoEditorInstance = ReturnType<Monaco['editor']['create']>
 
-const MrkdwnElement = findComponent<{
-  text: string
-}>('MrkdwnElement')
+let monaco: Monaco
+
 type ButtonProps = {
   type?: 'primary' | 'ghost' | 'outline' | 'danger'
   size?: 'small' | 'medium' | 'large'
@@ -23,15 +22,28 @@ type ButtonProps = {
   href?: string
   htmlType?: 'button' | 'submit' | 'reset'
 }
-const Button = findComponent<
+
+let MrkdwnElement: React.ComponentType<{ text: string }>
+let Button: React.ComponentType<
   ButtonProps &
     Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof ButtonProps>
->('Button')
+>
 
-export function addSettingsTab(
+export async function addSettingsTab(
   pluginManager: PluginManager,
   configStore: ConfigStore
 ) {
+  await reactPromise
+  monaco = await initMonaco()
+  const findComponent = await findComponentPromise
+  const patchComponent = await patchComponentPromise
+
+  MrkdwnElement = findComponent<{ text: string }>('MrkdwnElement')
+  Button = findComponent<
+    ButtonProps &
+      Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof ButtonProps>
+  >('Button')
+
   patchComponent<{
     tabs: {
       'label': React.ReactElement

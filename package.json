@@ -20,7 +20,9 @@
     "taut": "./cli/cli.js"
   },
   "scripts": {
-    "build": "bun ./scripts/buildDeps.ts",
+    "build": "bun run build:deps && bun run build:userscript",
+    "build:deps": "bun ./scripts/buildDeps.ts",
+    "build:userscript": "bun ./scripts/buildUserscript.ts",
     "format": "prettier --write .",
     "taut-cli": "bun ./cli/cli.js"
   },
@@ -36,6 +38,7 @@
     "@electron/fuses": "^2.0.0"
   },
   "devDependencies": {
+    "@monaco-editor/loader": "^1.7.0",
     "@rollup/browser": "^4.53.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
