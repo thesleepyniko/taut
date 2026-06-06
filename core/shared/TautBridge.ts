@@ -111,6 +111,11 @@ export interface TautBridge {
   onUserCssChange(cb: (css: string) => void): Unsubscribe
 
   /**
+   * CORS-bypassing fetch.
+   */
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
+
+  /**
    * Paths to Taut directories and files
    * TautPaths object, or null in userscript mode
    */

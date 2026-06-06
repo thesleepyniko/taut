@@ -30,6 +30,8 @@ export const tautAPIPromise = (async () => {
     findByProps: await findByPropsPromise,
     findComponent: await findComponentPromise,
     patchComponent: await patchComponentPromise,
+    fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+      (global.TautBridge as TautBridge).fetch(input, init),
     commonModules: {
       react: await reactPromise,
     },

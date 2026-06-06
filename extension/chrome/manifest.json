@@ -6,7 +6,9 @@
   "author": "Jeremy Woolley",
   "homepage_url": "https://jer.app/taut",
   "host_permissions": ["https://app.slack.com/*"],
+  "optional_host_permissions": ["*://*/*"],
   "permissions": ["storage"],
+  "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
       "matches": ["https://app.slack.com/client/*"],

@@ -5,6 +5,19 @@ import type { TautBridge, Unsubscribe } from '../shared/TautBridge'
 
 declare function GM_getValue<T>(key: string, defaultValue?: T): T
 declare function GM_setValue(key: string, value: unknown): void
+declare function GM_xmlhttpRequest(details: {
+  method?: string
+  url: string
+  headers?: Record<string, string>
+  data?: string
+  onload?: (response: {
+    status: number
+    statusText: string
+    responseText: string
+    responseHeaders: string
+  }) => void
+  onerror?: (response: { error: string }) => void
+}): void
 
 import { bundledPlugins, defaultConfig, defaultUserCss } from './bundledData'
 
@@ -83,6 +96,56 @@ export const UserscriptBackend: TautBridge = {
   onUserCssChange(cb: (css: string) => void): Unsubscribe {
     userCssCallbacks.add(cb)
     return () => userCssCallbacks.delete(cb)
+  },
+
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : (input as Request).url
+    const headers: Record<string, string> = {}
+    if (init?.headers) {
+      if (init.headers instanceof Headers) {
+        init.headers.forEach((v, k) => {
+          headers[k] = v
+        })
+      } else if (Array.isArray(init.headers)) {
+        for (const [k, v] of init.headers) headers[k] = v
+      } else {
+        Object.assign(headers, init.headers)
+      }
+    }
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: (init?.method ?? 'GET').toUpperCase(),
+        url,
+        headers,
+        data: typeof init?.body === 'string' ? init.body : undefined,
+        onload(r) {
+          const responseHeaders = new Headers()
+          for (const line of r.responseHeaders.trim().split('\r\n')) {
+            const idx = line.indexOf(':')
+            if (idx > 0)
+              responseHeaders.append(
+                line.slice(0, idx).trim(),
+                line.slice(idx + 1).trim()
+              )
+          }
+          resolve(
+            new Response(r.responseText, {
+              status: r.status,
+              statusText: r.statusText,
+              headers: responseHeaders,
+            })
+          )
+        },
+        onerror(r) {
+          reject(new Error(r.error))
+        },
+      })
+    })
   },
 }
 

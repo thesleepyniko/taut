@@ -45,4 +45,24 @@
     SLACK_FILTER,
     ['blocking']
   )
+  browser.runtime.onMessage.addListener((message) => {
+    if (message.type !== 'fetch:request') return
+    return fetch(message.url, message.init)
+      .then(async (response) => {
+        /** @type {Record<string, string>} */
+        const headers = {}
+        response.headers.forEach((value, key) => {
+          headers[key] = value
+        })
+        const body = await response.text()
+        return {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+          body,
+        }
+      })
+      .catch((e) => ({ error: String(e) }))
+  })
 })()

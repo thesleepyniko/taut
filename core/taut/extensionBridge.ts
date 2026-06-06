@@ -140,4 +140,55 @@ export const extensionBridge: TautBridge = {
     userCssCallbacks.add(cb)
     return () => userCssCallbacks.delete(cb)
   },
+
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : (input as Request).url
+    const serialInit: Record<string, unknown> = {}
+    if (init?.method) serialInit.method = init.method
+    if (init?.body && typeof init.body === 'string') serialInit.body = init.body
+    if (init?.headers) {
+      const headers: Record<string, string> = {}
+      if (init.headers instanceof Headers) {
+        init.headers.forEach((v, k) => {
+          headers[k] = v
+        })
+      } else if (Array.isArray(init.headers)) {
+        for (const [k, v] of init.headers) headers[k] = v
+      } else {
+        Object.assign(headers, init.headers)
+      }
+      serialInit.headers = headers
+    }
+    return new Promise((resolve, reject) => {
+      const id = ++msgId
+      const handler = (e: MessageEvent) => {
+        if (
+          !e.data?.__taut ||
+          e.data.type !== 'fetch:response' ||
+          e.data.id !== id
+        )
+          return
+        window.removeEventListener('message', handler)
+        const { ok: _ok, status, statusText, headers, body, error } = e.data
+        if (error) {
+          reject(new TypeError(error))
+          return
+        }
+        resolve(new Response(body, { status, statusText, headers }))
+      }
+      window.addEventListener('message', handler)
+      window.postMessage({
+        __taut: true,
+        type: 'fetch:request',
+        id,
+        url,
+        init: serialInit,
+      })
+    })
+  },
 }

@@ -8,7 +8,9 @@
 // @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
+// @connect      *
 // @homepageURL  https://jer.app/taut
 // @supportURL   https://hackclub.slack.com/archives/C0A057686SF
 // ==/UserScript==

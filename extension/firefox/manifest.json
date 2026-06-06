@@ -14,11 +14,12 @@
     "storage",
     "https://app.slack.com/*"
   ],
+  "optional_permissions": ["*://*/*"],
   "background": { "scripts": ["background.js"] },
   "content_scripts": [
     {
       "matches": ["https://app.slack.com/*"],
-      "js": ["content-storage.js"],
+      "js": ["content.js"],
       "run_at": "document_start"
     }
   ],
