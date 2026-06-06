@@ -13,7 +13,7 @@ if (!('Bun' in globalThis)) {
 const ROOT = path.join(import.meta.dir, '..')
 
 // Copy to both extension packages
-const src = path.join(ROOT, 'dist', 'taut.debug.js')
+const src = path.join(ROOT, 'dist', 'taut.js')
 const chromeOut = path.join(ROOT, 'extension', 'chrome', 'taut.js')
 const firefoxOut = path.join(ROOT, 'extension', 'firefox', 'taut.js')
 

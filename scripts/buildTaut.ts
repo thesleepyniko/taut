@@ -173,7 +173,7 @@ async function build(debug: boolean) {
   ).text()
   const header = headerTemplate
     .replace('$VERSION', version)
-    .replace('$DESCRIPTION_SUFFIX', debug ? ' (debug build)' : '')
+    .replace('$DESCRIPTION_SUFFIX', debug ? '' : ' (no sourcemaps)')
 
   const [plugins, rendererCode] = await Promise.all([
     bundlePlugins(debug),
@@ -189,8 +189,8 @@ async function build(debug: boolean) {
   // so every Taut source groups under one taut:// tree in DevTools.
   if (debug) code = rewriteInlineSourcemaps(code)
   const outFile = debug
-    ? path.join(DIST_DIR, 'taut.debug.js')
-    : path.join(DIST_DIR, 'taut.js')
+    ? path.join(DIST_DIR, 'taut.js')
+    : path.join(DIST_DIR, 'taut.min.js')
 
   await Bun.write(outFile, code)
   console.log(
