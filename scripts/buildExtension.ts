@@ -1,9 +1,18 @@
 #!/usr/bin/env bun
-// Copies the prebuilt taut.js into both extension packages and syncs the
-// manifest version. Run build:taut first (the build:extension script does this).
+// Builds distributable extension packages from the templates in extension/.
+//
+// For each browser (chrome, firefox) we produce two modes:
+//   offline - taut.js is bundled inside the extension
+//   online - taut.js is loaded from the server at runtime
+//
+// Output: dist/extension/<browser>-<mode>/ and dist/taut-<browser>-<mode>.zip
+//
+// Run build:taut first (the build:extension script does this).
 
 import path from 'path'
+import { rm, mkdir, readdir } from 'fs/promises'
 import prettier from 'prettier'
+import { zipSync } from 'fflate'
 
 if (!('Bun' in globalThis)) {
   console.error('This script must be run with Bun.')
@@ -11,24 +20,19 @@ if (!('Bun' in globalThis)) {
 }
 
 const ROOT = path.join(import.meta.dir, '..')
+const EXT_SRC = path.join(ROOT, 'extension')
+const DIST = path.join(ROOT, 'dist')
+const OUT_ROOT = path.join(DIST, 'extension')
+const TAUT_JS = path.join(DIST, 'taut.js')
 
-// Copy to both extension packages
-const src = path.join(ROOT, 'dist', 'taut.js')
-const chromeOut = path.join(ROOT, 'extension', 'chrome', 'taut.js')
-const firefoxOut = path.join(ROOT, 'extension', 'firefox', 'taut.js')
+const BROWSERS = ['chrome', 'firefox'] as const
+const MODES = ['offline', 'online'] as const
 
-await Promise.all([
-  Bun.write(chromeOut, Bun.file(src)),
-  Bun.write(firefoxOut, Bun.file(src)),
-])
-
-console.log('[build-extension] Copied taut.js to extension packages')
-
-// Sync version from package.json into both manifests
 const { version } = await Bun.file(path.join(ROOT, 'package.json')).json()
 
-for (const browser of ['chrome', 'firefox']) {
-  const manifestPath = path.join(ROOT, 'extension', browser, 'manifest.json')
+// Sync version into the source manifests so the templates stay in sync.
+for (const browser of BROWSERS) {
+  const manifestPath = path.join(EXT_SRC, browser, 'manifest.json')
   const manifest = await Bun.file(manifestPath).json()
   manifest.version = version
   const formatted = await prettier.format(JSON.stringify(manifest), {
@@ -37,5 +41,65 @@ for (const browser of ['chrome', 'firefox']) {
   })
   await Bun.write(manifestPath, formatted)
 }
-
 console.log(`[build-extension] Set manifest version to ${version}`)
+
+await rm(OUT_ROOT, { recursive: true, force: true })
+
+for (const browser of BROWSERS) {
+  const srcDir = path.join(EXT_SRC, browser)
+  const files = (await readdir(srcDir)).filter((f) => f !== 'taut.js')
+
+  for (const mode of MODES) {
+    const outDir = path.join(OUT_ROOT, `${browser}-${mode}`)
+    await mkdir(outDir, { recursive: true })
+
+    // Collect each package file as bytes so we can write the unpacked folder
+    // (for Chrome "Load unpacked") and build the zip from the same content.
+    const entries: Record<string, Uint8Array> = {}
+
+    for (const file of files) {
+      const srcPath = path.join(srcDir, file)
+
+      if (file === 'manifest.json') {
+        const manifest = await Bun.file(srcPath).json()
+        if (mode === 'online') delete manifest.web_accessible_resources
+        const formatted = await prettier.format(JSON.stringify(manifest), {
+          ...(await prettier.resolveConfig(srcPath)),
+          filepath: srcPath,
+        })
+        entries[file] = new TextEncoder().encode(formatted)
+        continue
+      }
+
+      const result = await Bun.build({
+        entrypoints: [srcPath],
+        target: 'browser',
+        format: 'iife',
+        define: { __TAUT_MODE__: JSON.stringify(mode) },
+      })
+      if (!result.success) {
+        console.error(
+          `[build-extension] Failed to build ${browser}/${file}:`,
+          result.logs
+        )
+        process.exit(1)
+      }
+      entries[file] = new Uint8Array(await result.outputs[0].arrayBuffer())
+    }
+
+    if (mode === 'offline') {
+      entries['taut.js'] = new Uint8Array(await Bun.file(TAUT_JS).arrayBuffer())
+    }
+
+    // Write the unpacked folder and a cross-platform zip from the same bytes.
+    for (const [name, bytes] of Object.entries(entries)) {
+      await Bun.write(path.join(outDir, name), bytes)
+    }
+    const zip = zipSync(entries)
+    await Bun.write(path.join(DIST, `taut-${browser}-${mode}.zip`), zip)
+
+    console.log(`[build-extension] Built ${browser}-${mode}`)
+  }
+}
+
+console.log('[build-extension] Done!')

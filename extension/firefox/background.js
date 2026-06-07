@@ -1,8 +1,9 @@
 ;(() => {
-  const DEV_MODE = true
-  const TAUT_URL = DEV_MODE
-    ? browser.runtime.getURL('taut.js')
-    : 'https://jer.app/taut/taut.js'
+  const TAUT_MODE = __TAUT_MODE__
+  const TAUT_URL =
+    TAUT_MODE === 'offline'
+      ? browser.runtime.getURL('taut.js')
+      : 'https://jer.app/taut/taut.js'
 
   /** @type {browser.webRequest.RequestFilter} */
   const SLACK_FILTER = {

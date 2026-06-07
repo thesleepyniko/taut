@@ -1,10 +1,11 @@
 // Taut Chrome content script
 
 ;(() => {
-  const DEV_MODE = true
-  const TAUT_URL = DEV_MODE
-    ? chrome.runtime.getURL('taut.js')
-    : 'https://jer.app/taut/taut.js'
+  const TAUT_MODE = __TAUT_MODE__
+  const TAUT_URL =
+    TAUT_MODE === 'offline'
+      ? chrome.runtime.getURL('taut.js')
+      : 'https://jer.app/taut/taut.js'
 
   // Inject taut.js (which will handle CSP bypass and stop/rewrite logic)
   document.write(`<script src="${TAUT_URL}"></script>`)
