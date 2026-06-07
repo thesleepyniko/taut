@@ -7,8 +7,9 @@ Client mod for Slack :D
 
 ---
 
-> [!WARNING] The rest of this section may be out of date, v2 is still in
-> development.
+> [!WARNING]
+>
+> The rest of this section may be out of date, v2 is still in development.
 
 Setup:
 
