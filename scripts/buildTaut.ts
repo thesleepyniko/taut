@@ -146,7 +146,7 @@ async function bundleEntry(
       'process': 'undefined',
       'import.meta.url': 'self.location.href',
     },
-    banner: header,
+    banner: header.trim() + '\n\n',
   })
 
   if (!result.success) {
