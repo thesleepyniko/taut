@@ -182,13 +182,17 @@ export class PluginManager extends TypedEventTarget<{
   }
 
   getPluginInfo() {
-    return [...this.plugins.entries()].map(([id, plugin]) => ({
-      id,
-      name: plugin.PluginClass.pluginName,
-      description: plugin.PluginClass.description,
-      authors: plugin.PluginClass.authors,
-      enabled: plugin.instance !== null,
-    }))
+    return [...this.plugins.entries()]
+      .sort(([a], [b]) =>
+        a.localeCompare(b, undefined, { sensitivity: 'base' })
+      )
+      .map(([id, plugin]) => ({
+        id,
+        name: plugin.PluginClass.pluginName,
+        description: plugin.PluginClass.description,
+        authors: plugin.PluginClass.authors,
+        enabled: plugin.instance !== null,
+      }))
   }
 }
 export type PluginInfo = ReturnType<PluginManager['getPluginInfo']>
