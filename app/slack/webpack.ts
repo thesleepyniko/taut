@@ -2,12 +2,20 @@
 // Hooks into Slack's webpack runtime before it loads
 // Captures module exports for discovery
 
+import type {
+  Chunk,
+  Exports,
+  ModuleFactory,
+  WebpackModule,
+  WebpackRequire,
+} from './webpackTypes'
+
 const global = globalThis as any
 
 // Module Registry & State
 
-let __webpack_require__: any = null
-const __webpackModuleRegistry = new Map<string | number, any>()
+let __webpack_require__: WebpackRequire | null = null
+const __webpackModuleRegistry = new Map<PropertyKey, Exports>()
 
 // Export Matching Helpers
 
@@ -107,10 +115,14 @@ export function forEachExport(
 // Factory Wrapping
 
 function wrapModuleFactory(
-  moduleId: string | number,
-  factory: Function
-): Function {
-  return function wrappedFactory(module: any, exports: any, require: any): any {
+  moduleId: PropertyKey,
+  factory: ModuleFactory
+): ModuleFactory {
+  return function wrappedFactory(
+    module: WebpackModule,
+    exports: Exports,
+    require: WebpackRequire
+  ): any {
     const result = factory.call(exports, module, exports, require)
 
     const moduleExports = module.exports
@@ -124,10 +136,10 @@ function wrapModuleFactory(
 
 // Push Interception
 
-type PushFn = (...items: any[]) => number
+type PushFn = (...items: Chunk[]) => number
 
 function wrapWebpackPush(originalPush: PushFn): PushFn {
-  return function wrappedPush(this: any, ...args: any[]): number {
+  return function wrappedPush(this: any, ...args: Chunk[]): number {
     for (const chunk of args) {
       if (!Array.isArray(chunk) || chunk.length < 2) continue
 
@@ -144,7 +156,7 @@ function wrapWebpackPush(originalPush: PushFn): PushFn {
 
       if (typeof runtime === 'function' && !__webpack_require__) {
         const originalRuntime = runtime
-        chunk[2] = function wrappedRuntime(require: any) {
+        chunk[2] = function wrappedRuntime(require: WebpackRequire) {
           if (!__webpack_require__) {
             __webpack_require__ = require
             global.__webpack_require__ = require
@@ -161,7 +173,7 @@ function wrapWebpackPush(originalPush: PushFn): PushFn {
 // Early Hook Installation
 
 function installWebpackHook() {
-  let backingArray: any[] | null = null
+  let backingArray: Chunk[] | null = null
   let wrappedPush: PushFn | null = null
 
   Object.defineProperty(global, 'webpackChunkwebapp', {
@@ -170,7 +182,7 @@ function installWebpackHook() {
     get() {
       return backingArray
     },
-    set(arr: any[]) {
+    set(arr: Chunk[]) {
       backingArray = arr
 
       let currentPush = arr.push.bind(arr)
