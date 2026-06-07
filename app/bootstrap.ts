@@ -4,7 +4,7 @@
 import { PluginManager } from './pluginManager'
 import { addSettingsTab } from './settings'
 import { ConfigStore } from './configStore'
-import { setStyle } from './css'
+import { setStyle } from './api/css'
 import type { TautBridge } from '../shared/TautBridge'
 
 const global = globalThis as any

@@ -8,8 +8,10 @@ import {
   findComponentPromise,
   patchComponentPromise,
 } from './slack/react'
-import { setStyle, removeStyle } from './css'
+import { setStyle, removeStyle } from './api/css'
 import { TypedEventTarget, deepEqual } from './helpers'
+import { setupMessageSendDelta } from './api/messageSend'
+import { createCache } from './api/cache'
 
 import {
   TautPlugin,
@@ -23,17 +25,21 @@ const global = globalThis as any
 global.TautPlugin = TautPlugin
 
 async function makeTautAPI(bridge: TautBridge) {
+  const patchComponent = await patchComponentPromise
+
   const TautAPI = {
     setStyle,
     removeStyle,
     findExport: await findExportPromise,
     findByProps: await findByPropsPromise,
     findComponent: await findComponentPromise,
-    patchComponent: await patchComponentPromise,
+    patchComponent,
     fetch: bridge.fetch.bind(bridge),
     commonModules: {
       react: await reactPromise,
     },
+    onMessageSendDelta: setupMessageSendDelta(patchComponent),
+    createCache,
   }
   global.TautAPI = TautAPI
   console.log('[Taut] TautAPI initialized', TautAPI)

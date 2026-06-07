@@ -4,9 +4,6 @@
 import { TautPlugin, type TautPluginConfig, type TautAPI } from '$taut'
 
 const API_URL = 'https://hackatime.hackclub.com/api/admin/v1/execute'
-const CACHE_KEY = 'shinigami_trust_levels'
-const CACHE_TIMESTAMP_KEY = 'shinigami_trust_levels_timestamp'
-const CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours
 
 type trustLevel = 0 | 1 | 2 | 3 | 4
 const TRUST_LEVEL_EMOJIS = new Map<trustLevel, string>([
@@ -59,6 +56,11 @@ export default class ShinigamiEyes extends TautPlugin {
   config: ShinigamiConfig
 
   trustLevels: Record<string, trustLevel> = {}
+
+  private cache = this.api.createCache<Record<string, trustLevel>>(
+    'shinigami_trust_levels',
+    { ttl: 24 * 60 * 60 * 1000 }
+  )
 
   private unpatchBaseMessageSender = () => {}
   private unpatchMemberProfileHoverCard = () => {}
@@ -302,49 +304,6 @@ export default class ShinigamiEyes extends TautPlugin {
     this.log('Stopped')
   }
 
-  // Cache Management
-
-  isCacheValid(): boolean {
-    const timestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY)
-    if (!timestamp) return false
-
-    const now = Date.now()
-    const cacheTime = parseInt(timestamp, 10)
-    return now - cacheTime < CACHE_DURATION
-  }
-
-  loadCachedTrustLevels(): boolean {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY)
-      if (cached && this.isCacheValid()) {
-        this.trustLevels = JSON.parse(cached)
-        this.log(
-          'Loaded trust levels from cache:',
-          Object.keys(this.trustLevels).length,
-          'users'
-        )
-        return true
-      }
-    } catch (e) {
-      this.log('Error loading cached trust levels:', e)
-    }
-    return false
-  }
-
-  saveTrustLevelsToCache(data: Record<string, trustLevel>) {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data))
-      localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString())
-      this.log(
-        'Saved trust levels to cache:',
-        Object.keys(data).length,
-        'users'
-      )
-    } catch (e) {
-      this.log('Error saving trust levels to cache:', e)
-    }
-  }
-
   // API Fetching
 
   async fetchTrustLevelsFromAPI(): Promise<void> {
@@ -414,17 +373,26 @@ export default class ShinigamiEyes extends TautPlugin {
       )
 
       this.trustLevels = allUsers
-      this.saveTrustLevelsToCache(allUsers)
+      this.cache.set('data', allUsers)
     } catch (error) {
       this.log('Error fetching trust levels from API:', error)
     }
   }
 
   async initializeTrustLevels(): Promise<void> {
-    if (!this.loadCachedTrustLevels()) {
-      this.log('No valid cache found, fetching from API...')
-      await this.fetchTrustLevelsFromAPI()
+    this.cache.load()
+    const cached = this.cache.get('data')
+    if (cached) {
+      this.trustLevels = cached
+      this.log(
+        'Loaded trust levels from cache:',
+        Object.keys(cached).length,
+        'users'
+      )
+      return
     }
+    this.log('No valid cache found, fetching from API...')
+    await this.fetchTrustLevelsFromAPI()
   }
 
   getApiToken(): string | undefined {

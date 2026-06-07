@@ -1,7 +1,7 @@
 // Taut CSS Utilities
 // Provides functions to inject and remove CSS styles
 
-import { updateMonacoTheme } from './cdn'
+import { updateMonacoTheme } from '../cdn'
 
 const styleElementIdPrefix = 'taut-css-'
 

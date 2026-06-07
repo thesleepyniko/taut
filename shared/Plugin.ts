@@ -67,3 +67,17 @@ export interface TautPluginConstructor {
   readonly authors: string
   readonly defaultConfig?: string
 }
+
+/**
+ * A Delta object from Quill Delta, representing a document or change.
+ * @see https://github.com/slab/delta
+ */
+export type Delta = {
+  ops: ((
+    | { insert?: string | object }
+    | { delete?: number }
+    | { retain?: number }
+  ) & {
+    attributes?: Record<string, any>
+  })[]
+}
