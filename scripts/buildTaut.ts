@@ -169,6 +169,7 @@ async function build(debug: boolean) {
   const header = headerTemplate
     .replace('$VERSION', version)
     .replace('$DESCRIPTION_SUFFIX', debug ? '' : ' (no sourcemaps)')
+    .replaceAll('taut.js', debug ? 'taut.js' : 'taut.min.js')
 
   const [plugins, appCode] = await Promise.all([
     bundlePlugins(debug),

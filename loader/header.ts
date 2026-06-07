@@ -11,6 +11,8 @@
 // @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
 // @connect      *
+// @updateURL    https://jer.app/taut/taut.js
+// @downloadURL  https://jer.app/taut/taut.js
 // @homepageURL  https://jer.app/taut
 // @supportURL   https://hackclub.slack.com/archives/C0A057686SF
 // ==/UserScript==
