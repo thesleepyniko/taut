@@ -5,6 +5,7 @@
 import { PluginManager } from './pluginManager'
 import { addSettingsTab } from './settings'
 import { ConfigStore } from './configStore'
+import { setStyle } from './css'
 import type { TautBridge } from '../shared/TautBridge'
 
 const global = globalThis as any
@@ -28,6 +29,9 @@ export async function bootstrap(
   await configStore.init()
   console.log('[Taut] ConfigStore initialized', configStore)
   global.configStore = configStore
+
+  setStyle('user', configStore.getUserCssText())
+  configStore.onUserCssChange((css) => setStyle('user', css))
 
   // Initialize plugins
   const pluginManager = new PluginManager(bridge, configStore)
