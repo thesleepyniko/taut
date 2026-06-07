@@ -211,7 +211,7 @@ const rendererCodePromise = ipcRenderer.invoke('taut:get-renderer-code')
   const head = parsedDocument.head
   const rendererCode = await rendererCodePromise
   const scriptEl = parsedDocument.createElement('script')
-  scriptEl.textContent = `// Taut injected renderer code\nBuilt from core/renderer/main.ts\n${rendererCode}`
+  scriptEl.textContent = `// Taut injected renderer code\n// Built from core/renderer/main.ts\n${rendererCode}`
   head.insertBefore(scriptEl, head.firstChild)
 
   const html = parsedDocument.documentElement.outerHTML
