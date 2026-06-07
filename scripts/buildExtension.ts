@@ -28,21 +28,6 @@ const TAUT_JS = path.join(DIST, 'taut.js')
 const BROWSERS = ['chrome', 'firefox'] as const
 const MODES = ['offline', 'online'] as const
 
-const { version } = await Bun.file(path.join(ROOT, 'package.json')).json()
-
-// Sync version into the source manifests so the templates stay in sync.
-for (const browser of BROWSERS) {
-  const manifestPath = path.join(EXT_SRC, browser, 'manifest.json')
-  const manifest = await Bun.file(manifestPath).json()
-  manifest.version = version
-  const formatted = await prettier.format(JSON.stringify(manifest), {
-    ...(await prettier.resolveConfig(manifestPath)),
-    filepath: manifestPath,
-  })
-  await Bun.write(manifestPath, formatted)
-}
-console.log(`[build-extension] Set manifest version to ${version}`)
-
 await rm(OUT_ROOT, { recursive: true, force: true })
 
 for (const browser of BROWSERS) {
