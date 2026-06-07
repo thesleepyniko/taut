@@ -249,7 +249,9 @@ export class ConfigStore {
       this.configText,
       ['plugins', pluginName, 'enabled'],
       enabled,
-      { formattingOptions: { tabSize: 2, insertSpaces: true } }
+      {
+        formattingOptions: { tabSize: 2, insertSpaces: true },
+      }
     )
     const newText = this.jsonc.applyEdits(this.configText, edits)
     await this.updateConfigText(newText)

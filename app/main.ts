@@ -1,5 +1,5 @@
-// Taut Renderer Entrypoint
-// Bundled and injected into the renderer process by the main process
+// Taut App Entrypoint
+// Bundled and injected into the main world alongside the Slack frontend
 
 import { bootstrap } from './bootstrap'
 

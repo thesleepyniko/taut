@@ -1,6 +1,6 @@
 // Shows the name or ID of private channels
 
-import { TautPlugin, type TautPluginConfig, type TautAPI } from '../core/Plugin'
+import { TautPlugin, type TautPluginConfig, type TautAPI } from '$taut'
 
 const CID_API_URL = 'https://flaron.halceon.dev/cid'
 const CID_CACHE_KEY = 'slack_private_channel_names_v1'

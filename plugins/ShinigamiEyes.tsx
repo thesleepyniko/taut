@@ -1,6 +1,6 @@
 // Shows Hackatime trust level indicators next to user names in Slack
 
-import { TautPlugin, type TautPluginConfig, type TautAPI } from '../core/Plugin'
+import { TautPlugin, type TautPluginConfig, type TautAPI } from '$taut'
 
 const API_URL = 'https://hackatime.hackclub.com/api/admin/v1/execute'
 const CACHE_KEY = 'shinigami_trust_levels'

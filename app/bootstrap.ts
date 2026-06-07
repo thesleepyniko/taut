@@ -1,5 +1,4 @@
 // Taut Bootstrap
-// Main entry point for Taut initialization in both Electron and Userscript
 // Wires up the backend, config store, and starts plugins
 
 import { PluginManager } from './pluginManager'
@@ -12,7 +11,6 @@ const global = globalThis as any
 
 /**
  * Main entry point for Taut initialization.
- * Called from both Electron preload and userscript bootstrap.
  */
 export async function bootstrap(
   bridge: TautBridge = global.TautBridge

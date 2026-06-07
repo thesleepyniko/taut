@@ -3,20 +3,20 @@
 import { UserscriptBackend } from './userscriptBridge'
 import { extensionBridge } from './extensionBridge'
 
-declare const __TAUT_RENDERER_CODE__: string
-const tautRendererCode = __TAUT_RENDERER_CODE__
+declare const __TAUT_APP_CODE__: string
+const tautAppCode = __TAUT_APP_CODE__
 
 const g = globalThis as any
 
-function rendererScript(doc: Document): HTMLScriptElement {
+function appScript(doc: Document): HTMLScriptElement {
   const script = doc.createElement('script')
   script.classList.add('taut-script')
   script.type = 'text/javascript'
-  script.textContent = tautRendererCode
+  script.textContent = tautAppCode
   return script
 }
 
-function rewriteWithRenderer() {
+function rewriteWithApp() {
   window.stop()
   return (async () => {
     const html = await fetch(location.href).then((r) => r.text())
@@ -34,8 +34,8 @@ function rewriteWithRenderer() {
     // Put the cleaned HTML into the current document
     document.documentElement.replaceWith(doc.documentElement)
 
-    // Run renderer first
-    document.head.appendChild(rendererScript(document))
+    // Run the app first
+    document.head.appendChild(appScript(document))
 
     // Re-add Slack's scripts in order
     for (const { src, textContent, type } of scripts) {
@@ -52,16 +52,16 @@ if (typeof g.GM_getValue !== 'undefined') {
   // Tampermonkey (or other userscript manager)
   const targetWindow = 'unsafeWindow' in g ? g.unsafeWindow : window
   targetWindow.TautBridge = UserscriptBackend
-  rewriteWithRenderer()
+  rewriteWithApp()
 } else if (g.__TAUT_NO_REWRITE) {
   // Firefox extension
   window.TautBridge = extensionBridge
-  document.head.insertBefore(rendererScript(document), document.head.firstChild)
+  document.head.insertBefore(appScript(document), document.head.firstChild)
 } else if (window.TautBridge) {
   // Electron
-  document.head.insertBefore(rendererScript(document), document.head.firstChild)
+  document.head.insertBefore(appScript(document), document.head.firstChild)
 } else {
   // Chrome extension
   window.TautBridge = extensionBridge
-  rewriteWithRenderer()
+  rewriteWithApp()
 }

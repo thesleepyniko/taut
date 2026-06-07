@@ -1,6 +1,7 @@
 // Taut Bridge Interface
-// Defines the interface for communication between renderer and backends
-// Implemented by ElectronBackend (IPC) and UserscriptBackend (GM_*)
+// Defines the interface for communication between the app and backends
+// Implemented by ElectronBackend (IPC), extensionBridge (WebExtension storage),
+// and UserscriptBackend (GM_*)
 
 /**
  * Plugin configuration object stored in config.jsonc
@@ -30,7 +31,7 @@ export interface TautPaths {
   esbuildWasm?: string
   /** Path to preload.js file (Electron only) */
   preloadJs?: string
-  /** Path to bundled renderer code (Electron only) */
+  /** Path to bundled app code (Electron only) */
   renderJs?: string
   /** Display-friendly versions of paths (with ~ for home dir) */
   display: Record<string, string>
@@ -41,8 +42,8 @@ export type Unsubscribe = () => void
 
 /**
  * TautBridge interface
- * Abstracts the communication layer between renderer and backend
- * Electron uses IPC, Userscript uses GM_* storage APIs
+ * Abstracts the communication layer between the app and backend
+ * Electron uses IPC, extension uses WebExtension storage, userscript uses GM_*
  */
 export interface TautBridge {
   /** Backend environment type */
@@ -51,6 +52,7 @@ export interface TautBridge {
   /**
    * Initialize the backend
    * Electron: fetches PATHS from main process
+   * Extension: seeds config defaults in WebExtension storage
    * Userscript: loads config from GM_getValue
    */
   start(): Promise<void>
@@ -58,7 +60,7 @@ export interface TautBridge {
   /**
    * Trigger plugin loading
    * Electron: tells main process to bundle and send plugins via IPC to onPluginCode
-   * Userscript: triggers all bundled plugins to be sent to onPluginCode
+   * Extension/userscript: triggers all bundled plugins to be sent to onPluginCode
    */
   startPlugins(): Promise<void>
 
@@ -117,7 +119,7 @@ export interface TautBridge {
 
   /**
    * Paths to Taut directories and files
-   * TautPaths object, or null in userscript mode
+   * TautPaths object in Electron, or null in extension/userscript mode
    */
   PATHS: TautPaths | null
 }

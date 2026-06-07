@@ -1,4 +1,4 @@
-# `core/main/`
+# `electron/main/`
 
 The main process code, runs in the Electron main process before Slack starts.
 Responsible for:

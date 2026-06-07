@@ -14,8 +14,10 @@ if (!('Bun' in globalThis)) {
 // Build main process dependencies (esbuild-wasm, resolve, electron-devtools-installer)
 console.log('[build-main] Bundling main dependencies...')
 const mainResult = await Bun.build({
-  entrypoints: [path.join(import.meta.dir, '..', 'core', 'main', 'deps.ts')],
-  outdir: path.join(import.meta.dir, '..', 'core', 'main', 'deps'),
+  entrypoints: [
+    path.join(import.meta.dir, '..', 'electron', 'main', 'deps.ts'),
+  ],
+  outdir: path.join(import.meta.dir, '..', 'electron', 'main', 'deps'),
   naming: 'deps.bundle.js',
   target: 'node',
   format: 'cjs',
@@ -40,7 +42,7 @@ try {
   const wasmDest = path.join(
     import.meta.dir,
     '..',
-    'core',
+    'electron',
     'main',
     'deps',
     'esbuild.wasm'

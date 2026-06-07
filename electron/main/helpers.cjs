@@ -64,9 +64,9 @@ const paths = {
   userPlugins: path.join(TAUT_DIR, 'user-plugins'),
   config: path.join(TAUT_DIR, 'config.jsonc'),
   userCss: path.join(TAUT_DIR, 'user.css'),
-  esbuildWasm: path.join(TAUT_DIR, 'core', 'main', 'deps', 'esbuild.wasm'),
-  preloadJs: path.join(TAUT_DIR, 'core', 'preload', 'preload.js'),
-  renderJs: path.join(TAUT_DIR, 'core', 'renderer', 'main.ts'),
+  esbuildWasm: path.join(TAUT_DIR, 'electron', 'main', 'deps', 'esbuild.wasm'),
+  preloadJs: path.join(TAUT_DIR, 'electron', 'preload', 'preload.js'),
+  renderJs: path.join(TAUT_DIR, 'app', 'main.ts'),
 }
 
 // calculate a display path relative to ~ or %appdata%

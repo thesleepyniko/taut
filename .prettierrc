@@ -5,6 +5,7 @@
   "singleQuote": true,
   "quoteProps": "consistent",
   "proseWrap": "always",
+  "printWidth": 80,
   "overrides": [
     {
       "files": "*.jsonc",

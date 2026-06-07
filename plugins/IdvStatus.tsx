@@ -1,6 +1,6 @@
 // Shows a red squiggle on users who are not IDV verified
 
-import { TautPlugin, type TautPluginConfig, type TautAPI } from '../core/Plugin'
+import { TautPlugin, type TautPluginConfig, type TautAPI } from '$taut'
 
 const IDV_API_URL = 'https://identity.hackclub.com/api/external/check'
 const IDV_CACHE_KEY = 'slack_idv_status_v2'

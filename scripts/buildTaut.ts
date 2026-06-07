@@ -18,8 +18,7 @@ await mkdir(DIST_DIR, { recursive: true })
 const TAUT_SOURCE_ORIGIN = 'taut:///'
 
 function rewriteSourcePath(p: string): string {
-  let s = p.replace(/^\.\//, '')
-  s = s.replace(/^core\//, '') // core/renderer/main.ts -> renderer/main.ts
+  const s = p.replace(/^\.\//, '')
   return TAUT_SOURCE_ORIGIN + s
 }
 
@@ -39,7 +38,11 @@ function rewriteInlineSourcemaps(code: string): string {
 const globalPluginShim = {
   name: 'global-plugin-shim',
   setup(build: any) {
-    build.onLoad({ filter: /core\/Plugin\.ts$/ }, () => ({
+    build.onResolve({ filter: /^\$taut$/ }, () => ({
+      path: '$taut',
+      namespace: 'taut-global',
+    }))
+    build.onLoad({ filter: /.*/, namespace: 'taut-global' }, () => ({
       contents: `
         export const TautPlugin = globalThis.TautPlugin
         export default TautPlugin
@@ -91,12 +94,12 @@ async function bundlePlugins(debug: boolean): Promise<Record<string, string>> {
   return plugins
 }
 
-// Step 2: bundle renderer (injected as inline script by Tampermonkey path)
-async function bundleRenderer(debug: boolean): Promise<string> {
-  console.log('[build-taut] Bundling renderer...')
+// Step 2: bundle app (injected as inline script by Tampermonkey path)
+async function bundleApp(debug: boolean): Promise<string> {
+  console.log('[build-taut] Bundling app...')
 
   const result = await Bun.build({
-    entrypoints: [path.join(ROOT, 'core', 'renderer', 'main.ts')],
+    entrypoints: [path.join(ROOT, 'app', 'main.ts')],
     target: 'browser',
     format: 'iife',
     minify: true,
@@ -108,36 +111,36 @@ async function bundleRenderer(debug: boolean): Promise<string> {
   })
 
   if (!result.success) {
-    console.error('[build-taut] Failed to bundle renderer:', result.logs)
+    console.error('[build-taut] Failed to bundle app:', result.logs)
     process.exit(1)
   }
 
   let code = await result.outputs[0].text()
-  // The renderer is injected as an inline <script>, which DevTools would
+  // The app is injected as an inline <script>, which DevTools would
   // otherwise attribute to the page (app.slack.com). Naming it with a
   // sourceURL gives the generated script a stable identity under the taut://
   // tree instead of an anonymous inline entry under Slack.
-  if (debug) code += `\n//# sourceURL=${TAUT_SOURCE_ORIGIN}renderer.js\n`
+  if (debug) code += `\n//# sourceURL=${TAUT_SOURCE_ORIGIN}app.js\n`
   return code
 }
 
 // Step 3: bundle the unified entry
 async function bundleEntry(
   plugins: Record<string, string>,
-  rendererCode: string,
+  appCode: string,
   header: string,
   debug: boolean
 ): Promise<string> {
   console.log('[build-taut] Bundling entry...')
 
   const result = await Bun.build({
-    entrypoints: [path.join(ROOT, 'core', 'taut', 'main.ts')],
+    entrypoints: [path.join(ROOT, 'loader', 'main.ts')],
     target: 'browser',
     format: 'iife',
     minify: true,
     sourcemap: debug ? 'inline' : 'none',
     define: {
-      '__TAUT_RENDERER_CODE__': JSON.stringify(rendererCode),
+      '__TAUT_APP_CODE__': JSON.stringify(appCode),
       '__TAUT_BUNDLED_PLUGINS__': JSON.stringify(plugins),
       'process': 'undefined',
       'import.meta.url': 'self.location.href',
@@ -160,23 +163,23 @@ async function build(debug: boolean) {
   const version = (await Bun.file(path.join(ROOT, 'package.json')).json())
     .version
   const headerTemplate = await Bun.file(
-    path.join(ROOT, 'core', 'taut', 'header.ts')
+    path.join(ROOT, 'loader', 'header.ts')
   ).text()
   const header = headerTemplate
     .replace('$VERSION', version)
     .replace('$DESCRIPTION_SUFFIX', debug ? '' : ' (no sourcemaps)')
 
-  const [plugins, rendererCode] = await Promise.all([
+  const [plugins, appCode] = await Promise.all([
     bundlePlugins(debug),
-    bundleRenderer(debug),
+    bundleApp(debug),
   ])
 
   console.log(
-    `[build-taut] ${Object.keys(plugins).length} plugins, renderer ${(Buffer.byteLength(rendererCode) / 1024).toFixed(1)} KB`
+    `[build-taut] ${Object.keys(plugins).length} plugins, app ${(Buffer.byteLength(appCode) / 1024).toFixed(1)} KB`
   )
 
-  let code = await bundleEntry(plugins, rendererCode, header, debug)
-  // Rewrite all inline sourcemaps (outer entry + embedded renderer + plugins)
+  let code = await bundleEntry(plugins, appCode, header, debug)
+  // Rewrite all inline sourcemaps (outer entry + embedded app + plugins)
   // so every Taut source groups under one taut:// tree in DevTools.
   if (debug) code = rewriteInlineSourcemaps(code)
   const outFile = debug

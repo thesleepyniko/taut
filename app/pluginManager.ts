@@ -15,7 +15,7 @@ import {
   TautPlugin,
   type TautPluginConstructor,
   type TautPluginConfig,
-} from '../Plugin'
+} from '../shared/Plugin'
 import type { TautBridge } from '../shared/TautBridge'
 import type { ConfigStore } from './configStore'
 

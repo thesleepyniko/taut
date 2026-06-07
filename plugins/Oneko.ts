@@ -1,7 +1,7 @@
 // Adds a little cat that chases your cursor around the screen
 // Based on oneko.js by @adryd325 (https://github.com/adryd325/oneko.js)
 
-import { TautPlugin, type TautPluginConfig, type TautAPI } from '../core/Plugin'
+import { TautPlugin, type TautPluginConfig, type TautAPI } from '$taut'
 
 const NEKO_FILE =
   'https://raw.githubusercontent.com/adryd325/oneko.js/46b0684f29694eaf3252835003f4d9d0258556e5/oneko.gif'
@@ -270,9 +270,7 @@ export default class Oneko extends TautPlugin {
     if (!spriteSet) return
 
     const sprite = spriteSet[frame % spriteSet.length]
-    this.nekoEl.style.backgroundPosition = `${sprite[0] * 32}px ${
-      sprite[1] * 32
-    }px`
+    this.nekoEl.style.backgroundPosition = `${sprite[0] * 32}px ${sprite[1] * 32}px`
   }
 
   resetIdleAnimation(): void {

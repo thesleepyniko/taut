@@ -1,5 +1,5 @@
-// Taut Renderer Helpers
-// Shared utilities for the renderer process
+// Taut App Helpers
+// Shared utilities for the Taut app
 
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true

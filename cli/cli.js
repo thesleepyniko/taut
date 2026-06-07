@@ -63,9 +63,7 @@ async function main() {
         ? ''
         : `, outdated, latest is v${PATCH_VERSION}`
       console.log(
-        `   Taut installed: Yes (shim v${
-          appAsarInfo.patchVersion ?? '?'
-        }${statusText})`
+        `   Taut installed: Yes (shim v${appAsarInfo.patchVersion ?? '?'}${statusText})`
       )
     } else {
       console.log('   Taut installed: No')
@@ -147,9 +145,7 @@ async function main() {
       .map(([fuse, enabled]) => fuse)
 
     console.log(
-      `Electron fuses: ${
-        enabledFuses.length > 0 ? enabledFuses.join(', ') : 'none'
-      }`
+      `Electron fuses: ${enabledFuses.length > 0 ? enabledFuses.join(', ') : 'none'}`
     )
     console.log()
   } else {

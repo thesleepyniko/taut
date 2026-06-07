@@ -1,4 +1,4 @@
-# `core/preload/`
+# `electron/preload/`
 
 The preload script, runs in the Chromium renderer process in the isolated
 preload world. Acts as a bridge between the main process and renderer.

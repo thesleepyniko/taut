@@ -1,7 +1,7 @@
 // Blocks Slack's built-in tracking requests
 // Pattern list sourced from uAssets and AdGuard filters via 3kh0/slick
 
-import { TautPlugin } from '../core/Plugin'
+import { TautPlugin } from '$taut'
 
 const TRACKING_PATTERNS = [
   '*://slackb.com/*',

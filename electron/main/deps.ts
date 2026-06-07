@@ -42,7 +42,7 @@ export async function initEsbuild(wasmPath: string) {
  * Uses esbuild-wasm
  *
  * @param entryPath - path to the entry file (ts or js)
- * @param useGlobalTautPlugin - if true, replaces imports of TautPlugin with globalThis.TautPlugin
+ * @param useGlobalTautPlugin - if true, resolves `$taut` imports to globalThis.TautPlugin
  * @returns the generated IIFE expression
  */
 export async function bundle(
@@ -65,6 +65,20 @@ export async function bundle(
       {
         name: 'load-plugin',
         setup(build) {
+          if (useGlobalTautPlugin) {
+            build.onResolve({ filter: /^\$taut$/ }, () => ({
+              path: '$taut',
+              namespace: 'taut-global',
+            }))
+            build.onLoad({ filter: /.*/, namespace: 'taut-global' }, () => ({
+              contents: `
+                  export const TautPlugin = globalThis.TautPlugin
+                  export default TautPlugin
+                `,
+              loader: 'js' as const,
+            }))
+          }
+
           build.onResolve({ filter: /.*/ }, async (args) => {
             try {
               const resolvedPath = await new Promise<string>((r, reject) => {
@@ -102,16 +116,6 @@ export async function bundle(
           build.onLoad(
             { filter: /.*/, namespace: 'local-fs' },
             async (args) => {
-              if (useGlobalTautPlugin && args.path.endsWith('core/Plugin.ts')) {
-                return {
-                  contents: `
-                    export const TautPlugin = globalThis.TautPlugin
-                    export default TautPlugin
-                  `,
-                  loader: 'js',
-                }
-              }
-
               const contents = await fs.promises.readFile(args.path, 'utf-8')
               return {
                 contents,

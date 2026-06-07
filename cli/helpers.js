@@ -370,7 +370,10 @@ export async function isMacSandboxed(resourcesDir) {
     const result = execFileSync(
       'codesign',
       ['-d', '--entitlements', '-', appPath],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }
     )
     const sandboxRegex =
       /\t\[Key] com\.apple\.security\.app-sandbox\n\t\[Value]\n\t\t\[Bool] true\n/

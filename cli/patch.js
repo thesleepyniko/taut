@@ -196,7 +196,9 @@ async function resign(resourcesDir) {
     const tccutil = spawnSync(
       'tccutil',
       ['reset', permission, 'com.tinyspeck.slackmacgap'],
-      { encoding: 'utf8' }
+      {
+        encoding: 'utf8',
+      }
     )
 
     if (tccutil.error || tccutil.status !== 0) {
@@ -397,9 +399,7 @@ export async function install(resourcesDir) {
 
     if (asarInfo?.name === 'taut-shim') {
       console.log(
-        `ℹ️  Updating patch from v${
-          asarInfo.patchVersion || '?'
-        } to v${PATCH_VERSION}...`
+        `ℹ️  Updating patch from v${asarInfo.patchVersion || '?'} to v${PATCH_VERSION}...`
       )
     } else {
       console.log('📦 Applying Taut patch...')

@@ -108,7 +108,6 @@ function TautSettings({
 }) {
   const bridge = window.TautBridge
   const paths = bridge.PATHS
-  const isUserscript = bridge.env === 'userscript'
 
   return (
     <div>
@@ -121,7 +120,7 @@ function TautSettings({
         Taut Settings
       </div>
       <MrkdwnElement text="<#C0A057686SF> | <https://github.com/jeremy46231/taut|Repository>" />
-      {!isUserscript && paths && (
+      {paths && (
         <MrkdwnElement
           text={`Config Directory: \`${paths.display.tautDir}\``}
         />
@@ -149,7 +148,6 @@ function ConfigEditor({ configStore }: { configStore: ConfigStore }) {
   const [saving, setSaving] = React.useState(false)
   const bridge = window.TautBridge
   const paths = bridge.PATHS
-  const isUserscript = bridge.env === 'userscript'
 
   React.useEffect(() => {
     setText(configStore.getConfigText())
@@ -172,11 +170,15 @@ function ConfigEditor({ configStore }: { configStore: ConfigStore }) {
 
   return (
     <div>
-      {!isUserscript && paths && (
+      {paths && (
         <MrkdwnElement text={`Editing \`${paths.display.config}\``} />
       )}
-      {isUserscript && (
-        <MrkdwnElement text="Editing config (stored in userscript storage)" />
+      {!paths && (
+        <MrkdwnElement
+          text={`Editing config (stored in ${
+            bridge.env === 'extension' ? 'extension' : 'userscript'
+          } storage)`}
+        />
       )}
       <MonacoEditor
         language="json"
@@ -212,7 +214,6 @@ function UserCssEditor({ configStore }: { configStore: ConfigStore }) {
   const [saving, setSaving] = React.useState(false)
   const bridge = window.TautBridge
   const paths = bridge.PATHS
-  const isUserscript = bridge.env === 'userscript'
 
   React.useEffect(() => {
     setText(configStore.getUserCssText())
@@ -235,11 +236,15 @@ function UserCssEditor({ configStore }: { configStore: ConfigStore }) {
 
   return (
     <div>
-      {!isUserscript && paths && (
+      {paths && (
         <MrkdwnElement text={`Editing \`${paths.display.userCss}\``} />
       )}
-      {isUserscript && (
-        <MrkdwnElement text="Editing user.css (stored in userscript storage)" />
+      {!paths && (
+        <MrkdwnElement
+          text={`Editing user.css (stored in ${
+            bridge.env === 'extension' ? 'extension' : 'userscript'
+          } storage)`}
+        />
       )}
       <MonacoEditor
         language="css"
