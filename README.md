@@ -1,9 +1,14 @@
 # Taut
 
-`npx taut-cli` - Client mod for Slack :D
+Client mod for Slack :D
 
 > Join [#taut](https://hackclub.slack.com/archives/C0A057686SF) on the
 > [Hack Club Slack](https://hackclub.com/slack)!
+
+---
+
+> [!WARNING] The rest of this section may be out of date, v2 is still in
+> development.
 
 Setup:
 
