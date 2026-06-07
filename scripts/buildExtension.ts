@@ -26,7 +26,7 @@ const OUT_ROOT = path.join(DIST, 'extension')
 const TAUT_JS = path.join(DIST, 'taut.js')
 
 const BROWSERS = ['chrome', 'firefox'] as const
-const MODES = ['offline', 'online'] as const
+const MODES = ['offline', 'online', 'dev'] as const
 
 await rm(OUT_ROOT, { recursive: true, force: true })
 
@@ -47,7 +47,7 @@ for (const browser of BROWSERS) {
 
       if (file === 'manifest.json') {
         const manifest = await Bun.file(srcPath).json()
-        if (mode === 'online') delete manifest.web_accessible_resources
+        if (mode !== 'offline') delete manifest.web_accessible_resources
         const formatted = await prettier.format(JSON.stringify(manifest), {
           ...(await prettier.resolveConfig(srcPath)),
           filepath: srcPath,

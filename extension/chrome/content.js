@@ -5,7 +5,9 @@
   const TAUT_URL =
     TAUT_MODE === 'offline'
       ? chrome.runtime.getURL('taut.js')
-      : 'https://jer.app/taut/taut.js'
+      : TAUT_MODE == 'dev'
+        ? 'http://localhost:3000/taut.js'
+        : 'https://jer.app/taut/taut.js'
 
   // Inject taut.js (which will handle CSP bypass and stop/rewrite logic)
   document.write(`<script src="${TAUT_URL}"></script>`)

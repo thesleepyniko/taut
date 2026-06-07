@@ -3,7 +3,9 @@
   const TAUT_URL =
     TAUT_MODE === 'offline'
       ? browser.runtime.getURL('taut.js')
-      : 'https://jer.app/taut/taut.js'
+      : TAUT_MODE == 'dev'
+        ? 'http://localhost:3000/taut.js'
+        : 'https://jer.app/taut/taut.js'
 
   /** @type {browser.webRequest.RequestFilter} */
   const SLACK_FILTER = {

@@ -194,5 +194,9 @@ async function build(debug: boolean) {
   )
 }
 
-await Promise.all([build(false), build(true)])
-console.log('[build-taut] Done!')
+if (import.meta.main) {
+  await Promise.all([build(false), build(true)])
+  console.log('[build-taut] Done!')
+}
+
+export default build
