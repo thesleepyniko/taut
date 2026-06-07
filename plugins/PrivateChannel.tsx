@@ -18,6 +18,12 @@ const pendingFetches = new Map<string, Promise<ChannelName>>()
 export default class PrivateChannel extends TautPlugin {
   static readonly pluginName = 'Private Channel'
   static readonly description = 'Shows the name or ID of private channels'
+  static readonly defaultConfig = `
+    // Shows the name or ID of private channels
+    "PrivateChannel": {
+      "enabled": true
+    }
+  `
   static readonly authors = '<@U06UYA5GMB5>'
 
   unpatchBaseMrkdwnChannel = () => {}

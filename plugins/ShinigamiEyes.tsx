@@ -44,6 +44,16 @@ export default class ShinigamiEyes extends TautPlugin {
   static readonly description =
     'Displays Hackatime trust level indicators next to user names in Slack'
   static readonly authors = '<@U07VC9705D4>, <@U046VA0KR8R>, <@U06UYA5GMB5>'
+  static readonly defaultConfig = `
+    // Shows an indicator next to every user showing their Hackatime status (Hackatime admins only)
+    "ShinigamiEyes": {
+      "enabled": false,
+      // https://hackatime.hackclub.com/admin/admin_api_keys
+      "apiToken": "",
+      // Show status emoji next to names on messages
+      "nameEmojis": true
+    }
+  `
 
   config: ShinigamiConfig
 

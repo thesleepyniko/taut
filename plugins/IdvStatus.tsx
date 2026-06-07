@@ -19,6 +19,13 @@ export default class IdvStatus extends TautPlugin {
   static readonly description =
     'Shows a red squiggle on users who are not IDV eligible'
   static readonly authors = '<@U08PUHSMW4V>'
+  static readonly defaultConfig = `
+    // Shows a red squiggle on users who are not IDV verified
+    // Shows an orange squiggle on users who verified ID but have since become >18
+    "IdvStatus": {
+      "enabled": false
+    }
+  `
 
   private unpatchBaseMessageSender = () => {}
 

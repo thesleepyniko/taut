@@ -2,7 +2,7 @@
 // Implements TautBridge using WebExtension storage
 
 import type { TautBridge, Unsubscribe } from '../shared/TautBridge'
-import { bundledPlugins, defaultConfig, defaultUserCss } from './bundledData'
+import { bundledPlugins, emptyConfig, defaultUserCss } from './bundledData'
 
 const CONFIG_KEY = 'taut-config'
 const CSS_KEY = 'taut-user-css'
@@ -76,7 +76,7 @@ export const extensionBridge: TautBridge = {
 
   async start(): Promise<void> {
     if (!(await storageGet(CONFIG_KEY, ''))) {
-      await storageSet(CONFIG_KEY, defaultConfig)
+      await storageSet(CONFIG_KEY, emptyConfig)
     }
     if (!(await storageGet(CSS_KEY, ''))) {
       await storageSet(CSS_KEY, defaultUserCss)
@@ -104,7 +104,7 @@ export const extensionBridge: TautBridge = {
   },
 
   async readConfigText(): Promise<string> {
-    return storageGet(CONFIG_KEY, defaultConfig)
+    return storageGet(CONFIG_KEY, emptyConfig)
   },
 
   async writeConfigText(text: string): Promise<boolean> {

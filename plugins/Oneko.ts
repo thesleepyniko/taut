@@ -94,6 +94,13 @@ export default class Oneko extends TautPlugin {
     'A cute cat that chases your cursor around the screen, based on <https://github.com/adryd325/oneko.js|oneko.js>'
   static readonly authors =
     '<https://github.com/adryd325|@adryd325>, <@U06UYA5GMB5>'
+  static readonly defaultConfig = `
+    // Adds a little cat that chases your cursor around the screen
+    "Oneko": {
+      "enabled": false,
+      "speed": 10
+    }
+  `
 
   config: OnekoConfig
 

@@ -78,10 +78,6 @@ export class PluginManager extends TypedEventTarget<{
     console.log(`[Taut] Loading plugin: ${name}`)
 
     try {
-      const config = this.configStore.getConfig().plugins[name] ?? {
-        enabled: false,
-      }
-
       const result = new Function(`return ${code}`)()
       const PluginClass =
         result.prototype instanceof TautPlugin
@@ -93,6 +89,11 @@ export class PluginManager extends TypedEventTarget<{
         !(PluginClass.prototype instanceof TautPlugin)
       ) {
         throw new Error(`Plugin class ${name} does not extend TautPlugin`)
+      }
+
+      await this.configStore.ensurePluginConfig(name, PluginClass.defaultConfig)
+      const config = this.configStore.getConfig().plugins[name] ?? {
+        enabled: false,
       }
 
       const existing = this.plugins.get(name)

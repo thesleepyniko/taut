@@ -130,13 +130,6 @@ async function bundleEntry(
 ): Promise<string> {
   console.log('[build-taut] Bundling entry...')
 
-  const defaultConfig = await Bun.file(
-    path.join(ROOT, 'cli', 'default-config.jsonc')
-  ).text()
-  const defaultUserCss = await Bun.file(
-    path.join(ROOT, 'cli', 'default-user.css')
-  ).text()
-
   const result = await Bun.build({
     entrypoints: [path.join(ROOT, 'core', 'taut', 'main.ts')],
     target: 'browser',
@@ -146,8 +139,6 @@ async function bundleEntry(
     define: {
       '__TAUT_RENDERER_CODE__': JSON.stringify(rendererCode),
       '__TAUT_BUNDLED_PLUGINS__': JSON.stringify(plugins),
-      '__TAUT_DEFAULT_CONFIG__': JSON.stringify(defaultConfig),
-      '__TAUT_DEFAULT_USER_CSS__': JSON.stringify(defaultUserCss),
       'process': 'undefined',
       'import.meta.url': 'self.location.href',
     },

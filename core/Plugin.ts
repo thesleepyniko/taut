@@ -65,4 +65,5 @@ export interface TautPluginConstructor {
   readonly pluginName: string
   readonly description: string
   readonly authors: string
+  readonly defaultConfig?: string
 }

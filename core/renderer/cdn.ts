@@ -3,6 +3,7 @@
 
 export type Monaco = typeof import('monaco-editor')
 export type JsoncParser = typeof import('jsonc-parser')
+export type JsoncNode = import('jsonc-parser').Node
 
 const global = globalThis as any
 

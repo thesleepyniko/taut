@@ -19,7 +19,7 @@ declare function GM_xmlhttpRequest(details: {
   onerror?: (response: { error: string }) => void
 }): void
 
-import { bundledPlugins, defaultConfig, defaultUserCss } from './bundledData'
+import { bundledPlugins, emptyConfig, defaultUserCss } from './bundledData'
 
 const CONFIG_KEY = 'taut-config'
 const USER_CSS_KEY = 'taut-user-css'
@@ -33,7 +33,7 @@ export const UserscriptBackend: TautBridge = {
 
   async start(): Promise<void> {
     if (!GM_getValue(CONFIG_KEY)) {
-      GM_setValue(CONFIG_KEY, defaultConfig)
+      GM_setValue(CONFIG_KEY, emptyConfig)
     }
     if (!GM_getValue(USER_CSS_KEY)) {
       GM_setValue(USER_CSS_KEY, defaultUserCss)
@@ -63,7 +63,7 @@ export const UserscriptBackend: TautBridge = {
   },
 
   async readConfigText(): Promise<string> {
-    return GM_getValue(CONFIG_KEY, defaultConfig) as string
+    return GM_getValue(CONFIG_KEY, emptyConfig) as string
   },
 
   async writeConfigText(text: string): Promise<boolean> {
