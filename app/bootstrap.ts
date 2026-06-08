@@ -5,6 +5,7 @@ import { PluginManager } from './pluginManager'
 import { addSettingsTab } from './settings'
 import { ConfigStore } from './configStore'
 import { setStyle } from './api/css'
+import { bundledPlugins } from './bundledData'
 import type { TautBridge } from '../shared/TautBridge'
 
 const global = globalThis as any
@@ -12,13 +13,7 @@ const global = globalThis as any
 /**
  * Main entry point for Taut initialization.
  */
-export async function bootstrap(
-  bridge: TautBridge = global.TautBridge
-): Promise<void> {
-  if (!bridge) {
-    throw new Error('[Taut] TautBridge not found')
-  }
-
+export async function bootstrap(bridge: TautBridge): Promise<void> {
   console.log('[Taut] Bootstrap starting...')
 
   await bridge.start()
@@ -34,11 +29,11 @@ export async function bootstrap(
   // Initialize plugins
   const pluginManager = new PluginManager(bridge, configStore)
   global.__tautPluginManager = pluginManager
-  const pluginsPromise = bridge.startPlugins()
 
-  // Setup settings tab
-  const settingsPromise = addSettingsTab(pluginManager, configStore)
+  for (const [name, code] of Object.entries(bundledPlugins)) {
+    pluginManager.loadPluginCode(name, code)
+  }
 
-  await Promise.all([pluginsPromise, settingsPromise])
+  await addSettingsTab(pluginManager, configStore)
   console.log('[Taut] Taut initialized')
 }

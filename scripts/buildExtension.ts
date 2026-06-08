@@ -1,16 +1,8 @@
 #!/usr/bin/env bun
-// Builds distributable extension packages from the templates in extension/.
-//
-// For each browser (chrome, firefox) we produce two modes:
-//   offline - taut.js is bundled inside the extension
-//   online - taut.js is loaded from the server at runtime
-//
-// Output: dist/extension/<browser>-<mode>/ and dist/taut-<browser>-<mode>.zip
-//
-// Run build:taut first (the build:extension script does this).
+// Builds distributable extension packages from the sources in extension/
 
 import path from 'path'
-import { rm, mkdir, readdir } from 'fs/promises'
+import { rm, mkdir, readFile } from 'fs/promises'
 import prettier from 'prettier'
 import { zipSync } from 'fflate'
 
@@ -23,44 +15,86 @@ const ROOT = path.join(import.meta.dir, '..')
 const EXT_SRC = path.join(ROOT, 'extension')
 const DIST = path.join(ROOT, 'dist')
 const OUT_ROOT = path.join(DIST, 'extension')
-const TAUT_JS = path.join(DIST, 'taut.js')
+const TAUT_JS = path.join(DIST, 'taut.debug.js') // embedded builds use the debug version
+const BRIDGE_TEMPLATE = path.join(EXT_SRC, 'shared', 'bridge-setup.template.js')
+
+const TAUT_VERSION: string = (
+  await Bun.file(path.join(ROOT, 'package.json')).json()
+).version
+
+const LOADER_NAMES: Record<string, string> = {
+  chrome: 'chrome-extension',
+  firefox: 'firefox-extension',
+}
 
 const BROWSERS = ['chrome', 'firefox'] as const
-const MODES = ['offline', 'online', 'dev'] as const
+const VARIANTS = ['standard', 'embedded'] as const
 
 await rm(OUT_ROOT, { recursive: true, force: true })
 
+const bridgeTemplate = await readFile(BRIDGE_TEMPLATE, 'utf8')
+
 for (const browser of BROWSERS) {
   const srcDir = path.join(EXT_SRC, browser)
-  const files = (await readdir(srcDir)).filter((f) => f !== 'taut.js')
+  const loaderName = LOADER_NAMES[browser]
+  const loaderVersion: string = (
+    await Bun.file(path.join(srcDir, 'manifest.json')).json()
+  ).version
 
-  for (const mode of MODES) {
-    const outDir = path.join(OUT_ROOT, `${browser}-${mode}`)
+  // Generate bridge-setup.js for this browser
+  const bridgeSetup = bridgeTemplate
+    .replace(/__TAUT_LOADER__/g, loaderName)
+    .replace(/__TAUT_LOADER_VERSION__/g, loaderVersion)
+
+  for (const variant of VARIANTS) {
+    const isEmbedded = variant === 'embedded'
+    const suffix = isEmbedded ? '-embedded' : ''
+    const outDir = path.join(OUT_ROOT, `${browser}${suffix}`)
     await mkdir(outDir, { recursive: true })
 
-    // Collect each package file as bytes so we can write the unpacked folder
-    // (for Chrome "Load unpacked") and build the zip from the same content.
     const entries: Record<string, Uint8Array> = {}
+    const enc = new TextEncoder()
 
-    for (const file of files) {
-      const srcPath = path.join(srcDir, file)
+    entries['bridge-setup.js'] = enc.encode(bridgeSetup)
 
-      if (file === 'manifest.json') {
-        const manifest = await Bun.file(srcPath).json()
-        if (mode !== 'offline') delete manifest.web_accessible_resources
-        const formatted = await prettier.format(JSON.stringify(manifest), {
-          ...(await prettier.resolveConfig(srcPath)),
-          filepath: srcPath,
-        })
-        entries[file] = new TextEncoder().encode(formatted)
-        continue
+    entries['options.html'] = new Uint8Array(
+      await Bun.file(path.join(EXT_SRC, 'shared', 'options.html')).arrayBuffer()
+    )
+
+    const optionsJs = (
+      await readFile(path.join(EXT_SRC, 'shared', 'options.js'), 'utf8')
+    )
+      .replace(/__TAUT_EMBEDDED__/g, String(isEmbedded))
+      .replace(/__TAUT_RUNTIME__/g, `'${browser}'`)
+      .replace(/__TAUT_APP_VERSION__/g, isEmbedded ? `'${TAUT_VERSION}'` : "''")
+    entries['options.js'] = enc.encode(optionsJs)
+
+    const manifest = await Bun.file(path.join(srcDir, 'manifest.json')).json()
+    if (isEmbedded) {
+      manifest.description = `${manifest.description} (with embedded app v${TAUT_VERSION})`
+      manifest.version_name = `${manifest.version}-embedded-${TAUT_VERSION}`
+      const war = manifest.web_accessible_resources
+      if (Array.isArray(war) && typeof war[0] === 'object') {
+        // MV3 (Chrome): array of { resources, matches }
+        war[0].resources = [...war[0].resources, 'taut.js']
+      } else {
+        // MV2 (Firefox): plain array of strings
+        manifest.web_accessible_resources = [...(war ?? []), 'taut.js']
       }
+    }
+    const formatted = await prettier.format(JSON.stringify(manifest), {
+      ...(await prettier.resolveConfig(path.join(srcDir, 'manifest.json'))),
+      filepath: path.join(srcDir, 'manifest.json'),
+    })
+    entries['manifest.json'] = enc.encode(formatted)
 
+    for (const file of ['content.js', 'background.js']) {
+      const srcPath = path.join(srcDir, file)
       const result = await Bun.build({
         entrypoints: [srcPath],
         target: 'browser',
         format: 'iife',
-        define: { __TAUT_MODE__: JSON.stringify(mode) },
+        define: { __TAUT_EMBEDDED__: String(isEmbedded) },
       })
       if (!result.success) {
         console.error(
@@ -72,18 +106,19 @@ for (const browser of BROWSERS) {
       entries[file] = new Uint8Array(await result.outputs[0].arrayBuffer())
     }
 
-    if (mode === 'offline') {
+    // For embedded: include taut.debug.js as taut.js
+    if (isEmbedded) {
       entries['taut.js'] = new Uint8Array(await Bun.file(TAUT_JS).arrayBuffer())
     }
 
-    // Write the unpacked folder and a cross-platform zip from the same bytes.
+    // Write unpacked folder and zip
     for (const [name, bytes] of Object.entries(entries)) {
       await Bun.write(path.join(outDir, name), bytes)
     }
     const zip = zipSync(entries)
-    await Bun.write(path.join(DIST, `taut-${browser}-${mode}.zip`), zip)
+    await Bun.write(path.join(OUT_ROOT, `taut-${browser}${suffix}.zip`), zip)
 
-    console.log(`[build-extension] Built ${browser}-${mode}`)
+    console.log(`[build-extension] Built ${browser}${suffix}`)
   }
 }
 

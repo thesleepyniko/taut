@@ -273,15 +273,15 @@ function applyReplacerWithCache<P = any>(
 }
 
 // Shared component resolution
-//
-// Given the `type`/`component` argument passed to createElement or jsx/jsxs,
+// Given the type/component argument passed to createElement or jsx/jsxs,
 // return the type that should actually be rendered: either the original
 // component (when no replacers match, or when explicitly opting out via
-// `__original`), or the replacer-transformed component. Results are memoized
+// __original), or the replacer-transformed component. Results are memoized
 // per component identity so matchers run at most once per type.
 function resolveType(type: any, props: any): any {
-  // `__original` opts a single render out of patching. Consume the prop and
-  // render the underlying component unchanged.
+  // __original opts a single render out of patching
+  // the original component object is preferable, because
+  // then multiple patches can be applied to the same component
   const __original = props?.['__original']
   if (__original) {
     delete props['__original']
@@ -302,10 +302,12 @@ function resolveType(type: any, props: any): any {
     .map(([, replacer]) => replacer)
 
   if (replacers.length > 0) {
-    const oc = getOriginalComponentObject(type) as unknown as ComponentType
+    const originalComponent = getOriginalComponentObject(
+      type
+    ) as unknown as ComponentType
     const replaced = replacers.reduce(
       (current, replacer) => applyReplacerWithCache(replacer, current),
-      oc
+      originalComponent
     )
     if (cacheable) resolvedComponentCache.set(type, replaced)
     return replaced
@@ -354,14 +356,9 @@ function patchComponent<P = {}>(
 }
 
 // Runtime Patching
-//
 // Both React module variants are intercepted the same way via forEachExport:
 // find every matching module (existing + future), wrap the render function so
-// all element types pass through resolveType before React sees them.
-//
-// resolveType is the single source of truth — a patchComponent registration
-// applies regardless of which transform Slack uses for a given module.
-//
+// all element types pass through resolveType before React sees them
 export const reactPromise: Promise<typeof import('react')> = new Promise(
   (resolve) => {
     forEachExport(isReact, (React) => {

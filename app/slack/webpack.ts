@@ -88,7 +88,7 @@ export function onModuleLoaded(cb: (exports: any) => void): void {
 }
 
 /**
- * Run a callback for every export matching the given predicate — both those
+ * Run a callback for every export matching the given predicate, both those
  * already in the registry and any that load in the future.
  */
 export function forEachExport(

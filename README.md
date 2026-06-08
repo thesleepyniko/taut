@@ -77,7 +77,7 @@ PRs are very welcome! You should join the
 [@Jeremy](https://hackclub.slack.com/team/U06UYA5GMB5), say hi :D
 
 The project uses [Bun](https://bun.sh/) for development, but npm works too if
-you prefer it. After installing (`bun i`) and building the deps
+you prefer it. After installing (`bun i`) and building everything
 (`bun run build`), you can run the cli from source (`bun taut-cli`). It uses the
 same config directory, and if you're only editing [`plugins/`](./plugins/), Taut
 will even hot reload them when you install!

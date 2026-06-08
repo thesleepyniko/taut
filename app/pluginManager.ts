@@ -67,10 +67,6 @@ export class PluginManager extends TypedEventTarget<{
     super()
     this.tautAPIPromise = makeTautAPI(bridge)
 
-    this.bridge.onPluginCode(async (name, code) => {
-      await this.loadPluginCode(name, code)
-    })
-
     this.configStore.onConfigChange((newConfig) => {
       for (const [name, pluginConfig] of Object.entries(newConfig.plugins)) {
         if (deepEqual(this.prevPluginConfigs.get(name), pluginConfig)) continue

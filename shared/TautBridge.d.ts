@@ -27,12 +27,8 @@ export interface TautPaths {
   config: string
   /** Path to user.css file */
   userCss: string
-  /** Path to esbuild.wasm file (Electron only) */
-  esbuildWasm?: string
   /** Path to preload.js file (Electron only) */
   preloadJs?: string
-  /** Path to bundled app code (Electron only) */
-  renderJs?: string
   /** Display-friendly versions of paths (with ~ for home dir) */
   display: Record<string, string>
 }
@@ -42,12 +38,30 @@ export type Unsubscribe = () => void
 
 /**
  * TautBridge interface
- * Abstracts the communication layer between the app and backend
- * Electron uses IPC, extension uses WebExtension storage, userscript uses GM_*
+ * Abstracts the communication layer between the app and backend.
+ * Implemented by each loader: Chrome extension, Firefox extension, Electron preload.
  */
 export interface TautBridge {
-  /** Backend environment type */
-  readonly env: 'electron' | 'extension' | 'userscript'
+  /** Which loader is providing this bridge */
+  readonly loader:
+    | 'chrome-extension'
+    | 'firefox-extension'
+    | 'electron'
+    | 'userscript'
+  /** Semver version string of this loader (e.g. '1.0.0'). */
+  readonly loaderVersion: string
+
+  /**
+   * Monotonic integer version of this loader's bridge API implementation
+   */
+  readonly bridgeVersion: number
+
+  /**
+   * Called by the app when bridgeVersion is below the required minimum.
+   * The loader should show UI informing the user to update, then return.
+   * After this returns, the app will exit without patching Slack.
+   */
+  warnOutdated(): void
 
   /**
    * Initialize the backend
@@ -56,21 +70,6 @@ export interface TautBridge {
    * Userscript: loads config from GM_getValue
    */
   start(): Promise<void>
-
-  /**
-   * Trigger plugin loading
-   * Electron: tells main process to bundle and send plugins via IPC to onPluginCode
-   * Extension/userscript: triggers all bundled plugins to be sent to onPluginCode
-   */
-  startPlugins(): Promise<void>
-
-  /**
-   * Subscribe to plugin code delivery
-   * Called when a plugin is bundled and ready to be loaded
-   * @param cb - Callback receiving plugin name, code string, and config
-   * @returns Unsubscribe function
-   */
-  onPluginCode(cb: (name: string, code: string) => void): Unsubscribe
 
   /**
    * Read the raw config.jsonc text

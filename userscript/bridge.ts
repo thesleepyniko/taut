@@ -19,15 +19,21 @@ declare function GM_xmlhttpRequest(details: {
   onerror?: (response: { error: string }) => void
 }): void
 
-import { bundledPlugins, emptyConfig, defaultUserCss } from './bundledData'
+import { emptyConfig, defaultUserCss } from '../app/bundledData'
 
 const CONFIG_KEY = 'taut-config'
 const USER_CSS_KEY = 'taut-user-css'
 
-type PluginCodeCallback = (name: string, code: string) => void
-
 export const UserscriptBackend: TautBridge = {
-  env: 'userscript',
+  loader: 'userscript' as const,
+  loaderVersion: '1.0.0',
+  bridgeVersion: 1,
+
+  warnOutdated() {
+    alert(
+      '[Taut] Your Taut userscript is outdated. Please update it from https://jer.app/taut/taut.js'
+    )
+  },
 
   PATHS: null,
 
@@ -38,28 +44,6 @@ export const UserscriptBackend: TautBridge = {
     if (!GM_getValue(USER_CSS_KEY)) {
       GM_setValue(USER_CSS_KEY, defaultUserCss)
     }
-  },
-
-  async startPlugins(): Promise<void> {
-    const plugins = bundledPlugins
-
-    for (const [name, code] of Object.entries(plugins)) {
-      for (const cb of pluginCodeCallbacks) {
-        try {
-          cb(name, code)
-        } catch (err) {
-          console.error(
-            `[Taut] Error in onPluginCode callback for ${name}:`,
-            err
-          )
-        }
-      }
-    }
-  },
-
-  onPluginCode(cb: PluginCodeCallback): Unsubscribe {
-    pluginCodeCallbacks.add(cb)
-    return () => pluginCodeCallbacks.delete(cb)
   },
 
   async readConfigText(): Promise<string> {
@@ -149,6 +133,5 @@ export const UserscriptBackend: TautBridge = {
   },
 }
 
-const pluginCodeCallbacks = new Set<PluginCodeCallback>()
 const configTextCallbacks = new Set<(text: string) => void>()
 const userCssCallbacks = new Set<(css: string) => void>()

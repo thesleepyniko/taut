@@ -13,6 +13,10 @@ const ROOT = path.join(import.meta.dir, '..')
 const PLUGINS_DIR = path.join(ROOT, 'plugins')
 const DIST_DIR = path.join(ROOT, 'dist')
 
+const TAUT_VERSION: string = (
+  await Bun.file(path.join(ROOT, 'package.json')).json()
+).version
+
 await mkdir(DIST_DIR, { recursive: true })
 
 const TAUT_SOURCE_ORIGIN = 'taut:///'
@@ -52,7 +56,7 @@ const globalPluginShim = {
   },
 }
 
-// Step 1: bundle plugins
+// Step 1: bundle plugins into a Record<string, string>
 async function bundlePlugins(debug: boolean): Promise<Record<string, string>> {
   const plugins: Record<string, string> = {}
   if (!fs.existsSync(PLUGINS_DIR)) return plugins
@@ -95,8 +99,11 @@ async function bundlePlugins(debug: boolean): Promise<Record<string, string>> {
   return plugins
 }
 
-// Step 2: bundle app (injected as inline script by Tampermonkey path)
-async function bundleApp(debug: boolean): Promise<string> {
+// Step 2: bundle app/main.ts with plugins inlined
+async function bundleApp(
+  plugins: Record<string, string>,
+  debug: boolean
+): Promise<string> {
   console.log('[build-taut] Bundling app...')
 
   const result = await Bun.build({
@@ -106,6 +113,8 @@ async function bundleApp(debug: boolean): Promise<string> {
     minify: true,
     sourcemap: debug ? 'inline' : 'none',
     define: {
+      '__TAUT_BUNDLED_PLUGINS__': JSON.stringify(plugins),
+      '__TAUT_VERSION__': JSON.stringify(TAUT_VERSION),
       'process': 'undefined',
       'import.meta.url': 'self.location.href',
     },
@@ -125,68 +134,20 @@ async function bundleApp(debug: boolean): Promise<string> {
   return code
 }
 
-// Step 3: bundle the unified entry
-async function bundleEntry(
-  plugins: Record<string, string>,
-  appCode: string,
-  header: string,
-  debug: boolean
-): Promise<string> {
-  console.log('[build-taut] Bundling entry...')
-
-  const result = await Bun.build({
-    entrypoints: [path.join(ROOT, 'loader', 'main.ts')],
-    target: 'browser',
-    format: 'iife',
-    minify: true,
-    sourcemap: debug ? 'inline' : 'none',
-    define: {
-      '__TAUT_APP_CODE__': JSON.stringify(appCode),
-      '__TAUT_BUNDLED_PLUGINS__': JSON.stringify(plugins),
-      'process': 'undefined',
-      'import.meta.url': 'self.location.href',
-    },
-    banner: header.trim() + '\n\n',
-  })
-
-  if (!result.success) {
-    console.error('[build-taut] Failed to bundle entry:', result.logs)
-    process.exit(1)
-  }
-
-  return result.outputs[0].text()
-}
-
 async function build(debug: boolean) {
-  const label = debug ? 'debug' : 'release'
+  const label = debug ? 'debug' : 'production'
   console.log(`[build-taut] Starting ${label} build...`)
 
-  const version = (await Bun.file(path.join(ROOT, 'package.json')).json())
-    .version
-  const headerTemplate = await Bun.file(
-    path.join(ROOT, 'loader', 'header.ts')
-  ).text()
-  const header = headerTemplate
-    .replace('$VERSION', version)
-    .replace('$DESCRIPTION_SUFFIX', debug ? '' : ' (no sourcemaps)')
-    .replaceAll('taut.js', debug ? 'taut.js' : 'taut.min.js')
+  const plugins = await bundlePlugins(debug)
 
-  const [plugins, appCode] = await Promise.all([
-    bundlePlugins(debug),
-    bundleApp(debug),
-  ])
+  console.log(`[build-taut] ${Object.keys(plugins).length} plugins bundled`)
 
-  console.log(
-    `[build-taut] ${Object.keys(plugins).length} plugins, app ${(Buffer.byteLength(appCode) / 1024).toFixed(1)} KB`
-  )
-
-  let code = await bundleEntry(plugins, appCode, header, debug)
-  // Rewrite all inline sourcemaps (outer entry + embedded app + plugins)
-  // so every Taut source groups under one taut:// tree in DevTools.
+  let code = await bundleApp(plugins, debug)
   if (debug) code = rewriteInlineSourcemaps(code)
+
   const outFile = debug
-    ? path.join(DIST_DIR, 'taut.js')
-    : path.join(DIST_DIR, 'taut.min.js')
+    ? path.join(DIST_DIR, 'taut.debug.js')
+    : path.join(DIST_DIR, 'taut.js')
 
   await Bun.write(outFile, code)
   console.log(

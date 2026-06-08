@@ -1,17 +1,50 @@
 // Taut Chrome content script
 
 ;(() => {
-  const TAUT_MODE = __TAUT_MODE__
-  const TAUT_URL =
-    TAUT_MODE === 'offline'
-      ? chrome.runtime.getURL('taut.js')
-      : TAUT_MODE == 'dev'
-        ? 'http://localhost:3000/taut.js'
-        : 'https://jer.app/taut/taut.js'
+  const DEFAULT_URL = __TAUT_EMBEDDED__
+    ? chrome.runtime.getURL('taut.js')
+    : 'https://jer.app/taut/taut.js'
 
-  // Inject taut.js (which will handle CSP bypass and stop/rewrite logic)
-  document.write(`<script src="${TAUT_URL}"></script>`)
+  window.stop()
 
+  Promise.all([
+    chrome.storage.local.get({ tautUrl: DEFAULT_URL }),
+    fetch(location.href).then((r) => r.text()),
+  ]).then(([{ tautUrl }, html]) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    doc.querySelector('meta[http-equiv="Content-Security-Policy"]')?.remove()
+
+    // Collect and remove all script elements
+    const scripts = Array.from(doc.querySelectorAll('script')).map((s) => ({
+      src: s.src,
+      textContent: s.textContent,
+      type: s.getAttribute('type'),
+    }))
+    doc.querySelectorAll('script').forEach((s) => s.remove())
+
+    // Inject: bridge-setup (sets window.TautBridge), then taut.js, then Slack's scripts
+    const bridgeScript = doc.createElement('script')
+    bridgeScript.src = chrome.runtime.getURL('bridge-setup.js')
+    doc.head.appendChild(bridgeScript)
+
+    const tautScript = doc.createElement('script')
+    tautScript.src = /** @type {string} */ (tautUrl)
+    doc.head.appendChild(tautScript)
+
+    for (const { src, textContent, type } of scripts) {
+      const s = doc.createElement('script')
+      if (type) s.type = type
+      if (src) s.src = src
+      else if (textContent) s.textContent = textContent
+      doc.head.appendChild(s)
+    }
+
+    document.open()
+    document.write('<!DOCTYPE html>' + doc.documentElement.outerHTML)
+    document.close()
+  })
+
+  // Relay postMessages from main world to chrome storage / background
   window.addEventListener('message', async (event) => {
     if (event.source !== window || !event.data?.__taut) return
     const { type, id, key, value, url, init } = event.data
@@ -51,7 +84,7 @@
     }
   })
 
-  // Forward storage changes from other tabs to main world.
+  // Forward storage changes from other tabs to main world
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return
     for (const [key, { newValue }] of Object.entries(changes)) {

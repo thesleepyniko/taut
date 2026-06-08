@@ -427,7 +427,7 @@ export default class ShinigamiEyes extends TautPlugin {
       }
 
       const logsQuery = `
-        SELECT 
+        SELECT
           tl.id,
           tl.previous_trust_level,
           tl.new_trust_level,

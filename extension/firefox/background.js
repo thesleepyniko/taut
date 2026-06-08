@@ -1,11 +1,9 @@
+// Taut Firefox background script
+
 ;(() => {
-  const TAUT_MODE = __TAUT_MODE__
-  const TAUT_URL =
-    TAUT_MODE === 'offline'
-      ? browser.runtime.getURL('taut.js')
-      : TAUT_MODE == 'dev'
-        ? 'http://localhost:3000/taut.js'
-        : 'https://jer.app/taut/taut.js'
+  const DEFAULT_URL = __TAUT_EMBEDDED__
+    ? browser.runtime.getURL('taut.js')
+    : 'https://jer.app/taut/taut.js'
 
   /** @type {browser.webRequest.RequestFilter} */
   const SLACK_FILTER = {
@@ -13,7 +11,7 @@
     types: ['main_frame'],
   }
 
-  // Rewrite the response body: remove CSP meta tag, inject flag + userscript
+  // Rewrite the response body: remove CSP meta tag, inject bridge-setup + taut.js
   browser.webRequest.onBeforeRequest.addListener(
     (details) => {
       const filter = browser.webRequest.filterResponseData(details.requestId)
@@ -26,19 +24,22 @@
         buffer += decoder.decode(event.data, { stream: true })
       }
 
-      filter.onstop = () => {
+      filter.onstop = async () => {
         buffer += decoder.decode()
 
-        // Remove CSP meta tag
         buffer = buffer.replace(
           /<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*\/?>/gi,
           ''
         )
 
-        // Inject flag + taut as the first scripts in <head>
+        const { tautUrl } = await browser.storage.local.get({
+          tautUrl: DEFAULT_URL,
+        })
+
+        const bridgeUrl = browser.runtime.getURL('bridge-setup.js')
         const injection =
-          '<script>window.__TAUT_NO_REWRITE=true</script>' +
-          `<script src="${TAUT_URL}"></script>`
+          `<script src="${bridgeUrl}"></script>` +
+          `<script src="${tautUrl}"></script>`
         buffer = buffer.replace(/(<head\b[^>]*>)/i, `$1${injection}`)
 
         filter.write(encoder.encode(buffer))
@@ -48,6 +49,7 @@
     SLACK_FILTER,
     ['blocking']
   )
+
   browser.runtime.onMessage.addListener((message) => {
     if (message.type !== 'fetch:request') return
     return fetch(message.url, message.init)

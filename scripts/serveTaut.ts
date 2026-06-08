@@ -28,7 +28,6 @@ async function rebuild() {
 await rebuild()
 for (const target of [
   path.join(ROOT, 'app'),
-  path.join(ROOT, 'loader'),
   path.join(ROOT, 'plugins'),
   path.join(ROOT, 'shared'),
   path.join(ROOT, 'package.json'),
@@ -46,12 +45,15 @@ const server = Bun.serve({
     if (url.pathname !== '/taut.js')
       return new Response('Not found', { status: 404 })
 
-    return new Response(fs.readFileSync(path.join(ROOT, 'dist', 'taut.js')), {
-      headers: {
-        'content-type': 'application/javascript; charset=utf-8',
-        'cache-control': 'no-store',
-      },
-    })
+    return new Response(
+      fs.readFileSync(path.join(ROOT, 'dist', 'taut.debug.js')),
+      {
+        headers: {
+          'content-type': 'application/javascript; charset=utf-8',
+          'cache-control': 'no-store',
+        },
+      }
+    )
   },
 })
 

@@ -15,6 +15,10 @@
     "https://app.slack.com/*"
   ],
   "optional_permissions": ["*://*/*"],
+  "options_ui": {
+    "page": "options.html",
+    "browser_style": false
+  },
   "background": { "scripts": ["background.js"] },
   "content_scripts": [
     {
@@ -23,5 +27,5 @@
       "run_at": "document_start"
     }
   ],
-  "web_accessible_resources": ["taut.js"]
+  "web_accessible_resources": ["bridge-setup.js"]
 }

@@ -10,6 +10,7 @@ import {
 import type { ConfigStore } from './configStore'
 import type { PluginInfo, PluginManager } from './pluginManager'
 import { initMonaco, type Monaco } from './cdn'
+import { tautVersion } from './bundledData'
 
 type MonacoEditorInstance = ReturnType<Monaco['editor']['create']>
 
@@ -99,6 +100,13 @@ export async function addSettingsTab(
   })
 }
 
+const LOADER_DISPLAY_NAMES: Record<string, string> = {
+  'chrome-extension': 'Chrome extension',
+  'firefox-extension': 'Firefox extension',
+  'electron': 'Desktop',
+  'userscript': 'Userscript',
+}
+
 function TautSettings({
   pluginManager,
   configStore,
@@ -108,6 +116,7 @@ function TautSettings({
 }) {
   const bridge = window.TautBridge
   const paths = bridge.PATHS
+  const loaderName = LOADER_DISPLAY_NAMES[bridge.loader] ?? bridge.loader
 
   return (
     <div>
@@ -119,7 +128,9 @@ function TautSettings({
       >
         Taut Settings
       </div>
-      <MrkdwnElement text="<#C0A057686SF> | <https://github.com/jeremy46231/taut|Repository>" />
+      <MrkdwnElement
+        text={`<#C0A057686SF> v${tautVersion} | ${loaderName} v${bridge.loaderVersion} | | <https://github.com/jeremy46231/taut|Repository>`}
+      />
       {paths && (
         <MrkdwnElement
           text={`Config Directory: \`${paths.display.tautDir}\``}
@@ -173,9 +184,7 @@ function ConfigEditor({ configStore }: { configStore: ConfigStore }) {
       {paths && <MrkdwnElement text={`Editing \`${paths.display.config}\``} />}
       {!paths && (
         <MrkdwnElement
-          text={`Editing config (stored in ${
-            bridge.env === 'extension' ? 'extension' : 'userscript'
-          } storage)`}
+          text={`Editing config (stored in ${LOADER_DISPLAY_NAMES[bridge.loader] ?? bridge.loader} storage)`}
         />
       )}
       <MonacoEditor
@@ -237,9 +246,7 @@ function UserCssEditor({ configStore }: { configStore: ConfigStore }) {
       {paths && <MrkdwnElement text={`Editing \`${paths.display.userCss}\``} />}
       {!paths && (
         <MrkdwnElement
-          text={`Editing user.css (stored in ${
-            bridge.env === 'extension' ? 'extension' : 'userscript'
-          } storage)`}
+          text={`Editing user.css (stored in ${LOADER_DISPLAY_NAMES[bridge.loader] ?? bridge.loader} storage)`}
         />
       )}
       <MonacoEditor

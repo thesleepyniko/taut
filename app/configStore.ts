@@ -4,6 +4,7 @@
 
 import type { TautBridge } from '../shared/TautBridge'
 import { initJsonc, type JsoncParser, type JsoncNode } from './cdn'
+import { emptyConfig, defaultUserCss } from './bundledData'
 
 function processSnippet(raw: string): string {
   const lines = raw.split('\n')
@@ -31,8 +32,7 @@ function detectIndent(configText: string, objectNode: JsoncNode): string {
     return lineLeadingSpaces(configText, children[0].offset)
   }
   const closingPos: number = objectNode.offset + objectNode.length - 1
-  // Closing } is on the same line as { (e.g. "plugins": {}) — use the
-  // object's own line indent plus one level (2 spaces as default unit).
+  // Closing } is on the same line as { (e.g. "plugins": {})
   const objectLineIndent = lineLeadingSpaces(configText, objectNode.offset)
   if (
     !/^\s*$/.test(
@@ -161,8 +161,8 @@ export class ConfigStore {
 
   async init(): Promise<void> {
     this.jsonc = await initJsonc()
-    this.configText = await this.bridge.readConfigText()
-    this.userCssText = await this.bridge.readUserCss()
+    this.configText = (await this.bridge.readConfigText()) || emptyConfig
+    this.userCssText = (await this.bridge.readUserCss()) || defaultUserCss
     this.config = this.parseConfig(this.configText)
 
     this.bridge.onConfigTextChange((text) => {
