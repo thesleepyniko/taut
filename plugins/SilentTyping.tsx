@@ -6,7 +6,7 @@ export default class SilentTyping extends TautPlugin {
   static readonly pluginName = 'Silent Typing'
   static readonly description =
     "Adds a button to suppress typing indicators so others can't see when you're typing"
-  static readonly authors = '<@U080A3QP42C>, <@U06UYA5GMB5>'
+  static readonly authors = '<@U06UYA5GMB5>, <@U080A3QP42C>, <@U01D9DWGEB0>'
   static readonly defaultConfig = `
     // Adds a button to suppress typing indicators so others can't see when you're typing
     "SilentTyping": {
@@ -17,7 +17,7 @@ export default class SilentTyping extends TautPlugin {
   private static readonly STORAGE_KEY = 'taut_silent_typing_suppressed'
   private suppressed = false
   private readonly listeners = new Set<(v: boolean) => void>()
-  private originalSend: typeof WebSocket.prototype.send | null = null
+  private unpatchInput = () => {}
   private unpatchButton = () => {}
 
   private setSuppressed(v: boolean) {
@@ -31,21 +31,31 @@ export default class SilentTyping extends TautPlugin {
 
     const instance = this
 
-    this.originalSend = WebSocket.prototype.send
-    const original = this.originalSend
-    WebSocket.prototype.send = function (data) {
-      if (
-        instance.suppressed &&
-        typeof data === 'string' &&
-        data.includes('typing')
-      ) {
-        try {
-          const type = JSON.parse(data).type
-          if (type === 'typing' || type === 'user_typing') return
-        } catch {}
+    this.unpatchInput = this.api.patchComponent<{
+      currentUserStartedTyping?: () => void
+      currentUserEndedTyping?: () => void
+    }>('MessagePaneInput', (Original) => (props) => {
+      const [isSuppressed, setIsSuppressed] = React.useState(
+        instance.suppressed
+      )
+
+      React.useEffect(() => {
+        instance.listeners.add(setIsSuppressed)
+        return () => {
+          instance.listeners.delete(setIsSuppressed)
+        }
+      }, [])
+
+      if (isSuppressed) {
+        props = {
+          ...props,
+          currentUserStartedTyping: () => {},
+          currentUserEndedTyping: () => {},
+        }
       }
-      return original.apply(this, arguments as any)
-    }
+
+      return <Original {...props} />
+    })
 
     const Tooltip = this.api.findComponent<{
       tip: string
@@ -131,10 +141,7 @@ export default class SilentTyping extends TautPlugin {
   }
 
   stop(): void {
-    if (this.originalSend) {
-      WebSocket.prototype.send = this.originalSend
-      this.originalSend = null
-    }
+    this.unpatchInput()
     this.unpatchButton()
     this.api.removeStyle('silent-typing')
     this.log('Stopped')
