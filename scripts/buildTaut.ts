@@ -122,7 +122,7 @@ async function bundleApp(
 
   if (!result.success) {
     console.error('[build-taut] Failed to bundle app:', result.logs)
-    process.exit(1)
+    throw new Error('App bundle failed')
   }
 
   let code = await result.outputs[0].text()

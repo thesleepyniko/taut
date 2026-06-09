@@ -16,7 +16,12 @@ let currentBuild: Promise<void> | null = null
 async function rebuild() {
   if (currentBuild) return currentBuild
 
-  currentBuild = build(true)
+  currentBuild = build(true).catch((err) => {
+    console.error(
+      '[serve-taut] Build failed, watching for changes...',
+      err.message
+    )
+  })
 
   try {
     return await currentBuild
