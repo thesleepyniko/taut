@@ -9,8 +9,12 @@ declare function GM_setValue(key: string, value: unknown): void
 declare function GM_registerMenuCommand(name: string, fn: () => void): void
 declare function GM_openInTab(url: string, opts?: { active?: boolean }): void
 declare const __TAUT_OPTIONS_HTML__: string
+declare const __TAUT_EMBEDDED__: boolean
+declare const __TAUT_APP_JS__: string
 
-const DEFAULT_URL = 'https://jer.app/taut/taut.js'
+const OFFICIAL_URL = 'https://jer.app/taut/taut.js'
+const EMBEDDED_SENTINEL = '<embedded>'
+const DEFAULT_URL = __TAUT_EMBEDDED__ ? EMBEDDED_SENTINEL : OFFICIAL_URL
 const OPTIONS_URL = 'https://taut.jer.app/options'
 
 // Expose tautPrefs on the real window — used by the options page
@@ -38,6 +42,7 @@ if (location.href.startsWith(OPTIONS_URL)) {
   document.close()
   ;(async () => {
     const tautUrl = GM_getValue('tautUrl', DEFAULT_URL)
+    const useEmbedded = __TAUT_EMBEDDED__ && tautUrl === EMBEDDED_SENTINEL
 
     let html: string
     try {
@@ -59,13 +64,17 @@ if (location.href.startsWith(OPTIONS_URL)) {
     doc.querySelectorAll('script').forEach((s) => s.remove())
 
     // Inject taut.js, then Slack's scripts
-    const scriptError = (url: string) =>
-      `alert('[Taut] Failed to load a script.\\n\\nURL: ' + ${JSON.stringify(url)} + '\\n\\n${url.includes('://localhost') ? 'Make sure your server is running.' : 'Ask in #taut for help.'}')`
-
     const tautScript = doc.createElement('script')
     tautScript.id = 'taut-app'
-    tautScript.src = tautUrl
-    tautScript.setAttribute('onerror', scriptError(tautScript.src))
+    if (useEmbedded) {
+      tautScript.textContent = __TAUT_APP_JS__
+    } else {
+      const resolvedUrl = tautUrl === EMBEDDED_SENTINEL ? OFFICIAL_URL : tautUrl
+      const scriptError = (url: string) =>
+        `alert('[Taut] Failed to load a script.\\n\\nURL: ' + ${JSON.stringify(url)} + '\\n\\n${url.includes('://localhost') ? 'Make sure your server is running.' : 'Ask in #taut for help.'}')`
+      tautScript.src = resolvedUrl
+      tautScript.setAttribute('onerror', scriptError(resolvedUrl))
+    }
     doc.head.appendChild(tautScript)
 
     for (const { src, textContent, type } of scripts) {

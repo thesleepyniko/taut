@@ -100,6 +100,7 @@
         }
 
         function getEmbeddedUrl() {
+          if (RUNTIME === 'userscript') return '<embedded>'
           if (RUNTIME === 'electron') return 'taut://app/taut.js'
           if (RUNTIME === 'chrome') return chrome.runtime.getURL('taut.js')
           if (RUNTIME === 'firefox') return browser.runtime.getURL('taut.js')
