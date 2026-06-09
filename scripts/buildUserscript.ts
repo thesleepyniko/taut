@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Builds the Taut userscript → dist/userscript/taut.user.js + taut-embedded.user.js
+// Builds the Taut userscript
 
 import path from 'path'
 import { readFile, mkdir } from 'fs/promises'
@@ -73,7 +73,9 @@ async function build(embedded: boolean) {
   })
 
   if (!result.success) {
-    console.error(`[build-userscript] ${embedded ? 'embedded' : 'standard'} build failed:`)
+    console.error(
+      `[build-userscript] ${embedded ? 'embedded' : 'standard'} build failed:`
+    )
     for (const log of result.logs) console.error(log)
     process.exit(1)
   }

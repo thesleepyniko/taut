@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+// Builds the main Taut app bundle
 
 import path from 'path'
 import fs from 'fs'
