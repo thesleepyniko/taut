@@ -67,6 +67,16 @@ export function initMonaco(): Promise<Monaco> {
   if (monacoPromise) return monacoPromise
 
   monacoPromise = (async () => {
+    // Electron's sandboxed renderer exposes a sealed `process` with no `env`, which causes
+    // Monaco's platform.ts to throw accessing process.env['CI']. Monaco checks globalThis.vscode.process
+    // first, so we make a fake one lol
+    if (
+      typeof global.process !== 'undefined' &&
+      global.process.env === undefined
+    ) {
+      ;(global.vscode ??= {}).process = { ...global.process, env: {} }
+    }
+
     const monacoLoaderModule =
       // @ts-ignore
       await import('https://cdn.jsdelivr.net/npm/@monaco-editor/loader@1.7.0/+esm')
