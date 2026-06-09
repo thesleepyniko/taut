@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & release
+    runs-on: ubuntu-latest
+    outputs:
+      desktop: ${{ steps.check.outputs.desktop }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - id: check
+        run: |
+          if git diff HEAD~1 HEAD --name-only 2>/dev/null | grep -q 'desktop/package.json'; then
+            echo "desktop=true" >> $GITHUB_OUTPUT
+          else
+            echo "desktop=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+
+      - name: Build taut.js
+        run: bun scripts/buildTaut.ts
+
+      - name: Build extensions
+        run: bun scripts/buildExtension.ts --standard-only
+
+      - name: Build userscript
+        run: bun scripts/buildUserscript.ts --standard-only
+
+      - name: Build desktop (win + linux)
+        if: steps.check.outputs.desktop == 'true'
+        run: bun scripts/buildDesktop.ts win linux
+
+      - name: Publish to latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view latest 2>/dev/null || \
+            gh release create latest \
+              --title "Latest" \
+              --prerelease \
+              --notes "Rolling release"
+          gh release upload latest --clobber \
+            dist/taut.js \
+            dist/taut.debug.js \
+            dist/userscript/taut.user.js \
+            dist/extension/taut-chrome.zip \
+            dist/extension/taut-firefox.zip
+
+      - name: Publish win + linux desktop to latest release
+        if: steps.check.outputs.desktop == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload latest --clobber dist/desktop/*
+
+  release-mac:
+    name: Desktop (mac)
+    needs: release
+    if: needs.release.outputs.desktop == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+
+      - name: Build desktop (mac)
+        run: bun scripts/buildDesktop.ts mac
+
+      - name: Publish mac desktop to latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload latest --clobber dist/desktop/*

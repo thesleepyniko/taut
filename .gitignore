@@ -3,3 +3,7 @@ node_modules/
 repomix-output.*
 tmp*
 **/deps/
+dist/
+desktop/build/
+.wakatime-project
+.wrangler

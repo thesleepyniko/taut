@@ -1,31 +1,33 @@
 // Shows a red squiggle on users who are not IDV verified
 
-import { TautPlugin, type TautPluginConfig, type TautAPI } from '../core/Plugin'
-
-const IDV_API_URL = 'https://identity.hackclub.com/api/external/check'
-const IDV_CACHE_KEY = 'slack_idv_status_v2'
-const IDV_CACHE_TIMESTAMP_KEY = 'slack_idv_status_timestamp_v2'
-const IDV_CACHE_DURATION = 24 * 60 * 60 * 1000
-const MAX_CACHE_SIZE = 5000
+import { TautPlugin } from '$taut'
 
 type IdvStatusType = 'eligible' | 'over_18' | 'unverified' | 'loading'
-let idvCache: Record<string, IdvStatusType> = {}
-
-// Pending fetch promises to prevent duplicate requests
-const pendingFetches = new Map<string, Promise<IdvStatusType>>()
 
 export default class IdvStatus extends TautPlugin {
   static readonly pluginName = 'IDV Status'
   static readonly description =
     'Shows a red squiggle on users who are not IDV eligible'
   static readonly authors = '<@U08PUHSMW4V>'
+  static readonly defaultConfig = `
+    // Shows a red squiggle on users who are not IDV verified
+    // Shows an orange squiggle on users who verified ID but have since become >18
+    "IdvStatus": {
+      "enabled": false
+    }
+  `
+
+  private cache = this.api.createCache<IdvStatusType>('idv_status', {
+    ttl: 24 * 60 * 60 * 1000,
+    maxSize: 5000,
+  })
 
   private unpatchBaseMessageSender = () => {}
 
   start(): void {
     this.log('Starting')
 
-    this.loadIdvCache()
+    this.cache.load()
 
     const instance = this
 
@@ -42,7 +44,7 @@ export default class IdvStatus extends TautPlugin {
           if (!userId || isBotMessage) return null
           if (!userId.startsWith('U') && !userId.startsWith('W')) return null
           if (userId === 'USLACKBOT') return null
-          return idvCache[userId] || 'loading'
+          return instance.cache.get(userId) ?? 'loading'
         }
       )
 
@@ -51,18 +53,10 @@ export default class IdvStatus extends TautPlugin {
         if (!userId.startsWith('U') && !userId.startsWith('W')) return
         if (userId === 'USLACKBOT') return
 
-        // If we have a cached status that's not loading, we're done
-        if (idvCache[userId] && idvCache[userId] !== 'loading') {
-          if (idvStatus !== idvCache[userId]) {
-            setIdvStatus(idvCache[userId])
-          }
-          return
-        }
-
-        // Fetch the status
-        instance.fetchIdvStatus(userId).then((status) => {
-          setIdvStatus(status)
-        })
+        instance
+          .fetchIdvStatus(userId)
+          .then(setIdvStatus)
+          .catch(() => {})
       }, [userId, isBotMessage])
 
       const className =
@@ -98,7 +92,7 @@ export default class IdvStatus extends TautPlugin {
     )
 
     // @ts-ignore
-    window.tautIdvClearCache = () => this.clearCache()
+    window.tautIdvClearCache = () => this.cache.clear()
 
     this.log('IDV Status loaded')
   }
@@ -113,100 +107,18 @@ export default class IdvStatus extends TautPlugin {
     this.log('Stopped')
   }
 
-  public clearCache(): void {
-    idvCache = {}
-    pendingFetches.clear()
-    localStorage.removeItem(IDV_CACHE_KEY)
-    localStorage.removeItem(IDV_CACHE_TIMESTAMP_KEY)
-    this.log('IDV Cache cleared')
-  }
+  async fetchIdvStatus(userId: string): Promise<IdvStatusType> {
+    return this.cache.fetch(userId, async () => {
+      const response = await fetch(
+        `https://identity.hackclub.com/api/external/check?slack_id=${userId}`
+      )
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`)
+      const data = await response.json()
 
-  loadIdvCache(): void {
-    try {
-      const timestamp = localStorage.getItem(IDV_CACHE_TIMESTAMP_KEY)
-      if (
-        timestamp &&
-        Date.now() - parseInt(timestamp, 10) < IDV_CACHE_DURATION
-      ) {
-        const cached = localStorage.getItem(IDV_CACHE_KEY)
-        if (cached) {
-          idvCache = JSON.parse(cached)
-          this.log('Loaded IDV cache:', Object.keys(idvCache).length, 'users')
-        }
-      }
-    } catch (e) {
-      this.log('Error loading IDV cache:', e)
-    }
-  }
-
-  saveIdvCache(): void {
-    try {
-      localStorage.setItem(IDV_CACHE_KEY, JSON.stringify(idvCache))
-      localStorage.setItem(IDV_CACHE_TIMESTAMP_KEY, Date.now().toString())
-    } catch (e) {
-      this.log('Error saving IDV cache:', e)
-    }
-  }
-
-  setCache(slackId: string, status: IdvStatusType): void {
-    idvCache[slackId] = status
-
-    const keys = Object.keys(idvCache)
-    if (keys.length > MAX_CACHE_SIZE) {
-      const toRemove = keys.slice(0, 100)
-      toRemove.forEach((k) => delete idvCache[k])
-    }
-
-    this.saveIdvCache()
-  }
-
-  async fetchIdvStatus(slackId: string): Promise<IdvStatusType> {
-    // Return cached value if available
-    if (idvCache[slackId] && idvCache[slackId] !== 'loading') {
-      return idvCache[slackId]
-    }
-
-    // If there's already a pending fetch for this user, return that promise
-    if (pendingFetches.has(slackId)) {
-      return pendingFetches.get(slackId)!
-    }
-
-    // Create the fetch promise
-    const fetchPromise = (async (): Promise<IdvStatusType> => {
-      try {
-        const response = await fetch(`${IDV_API_URL}?slack_id=${slackId}`)
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const data = await response.json()
-
-        let status: IdvStatusType = 'unverified'
-        if (data.result) {
-          if (data.result === 'verified_eligible') {
-            status = 'eligible'
-          } else if (data.result === 'verified_but_over_18') {
-            status = 'over_18'
-          } else if (
-            data.result === 'pending' ||
-            data.result === 'needs_submission'
-          ) {
-            status = 'unverified'
-          }
-        }
-
-        this.setCache(slackId, status)
-        return status
-      } catch (e) {
-        this.log('Error fetching IDV status:', e)
-        return 'loading' // Do not cache errors
-      } finally {
-        pendingFetches.delete(slackId)
-      }
-    })()
-
-    pendingFetches.set(slackId, fetchPromise)
-    return fetchPromise
+      if (data.result === 'verified_eligible') return 'eligible'
+      if (data.result === 'verified_but_over_18') return 'over_18'
+      return 'unverified'
+    })
   }
 }

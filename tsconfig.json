@@ -13,16 +13,24 @@
 
     "lib": ["ESNext", "DOM"],
 
-    "baseUrl": ".",
     "paths": {
-      "*": ["*"]
+      "$taut": ["./shared/Plugin.ts"],
+      "*": ["./*"]
     },
 
     "jsx": "react",
 
-    "types": ["bun", "node"],
+    "types": ["bun", "node", "chrome", "firefox-webext-browser"],
     "skipLibCheck": true
   },
   "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.cjs"],
-  "exclude": ["node_modules", "**/deps/", "tmp*"]
+  "exclude": [
+    "node_modules",
+    "**/deps/",
+    "dist",
+    "tmp*",
+    "extension/chrome/taut.js",
+    "extension/firefox/taut.js",
+    "server"
+  ]
 }

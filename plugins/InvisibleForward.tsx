@@ -1,95 +1,31 @@
 // Makes Slack links at the start of your messages invisible
 
-import { TautPlugin, type TautPluginConfig, type TautAPI } from '../core/Plugin'
+import { TautPlugin, type Delta } from '$taut'
 
 export default class InvisibleForward extends TautPlugin {
   static readonly pluginName = 'Invisible Forward'
+  static readonly defaultConfig = `
+    // Makes Slack links at the start of your messages invisible, like a forwarded message that works in threads
+    // Also makes links with a display text of "." at the start of your messages invisible
+    "InvisibleForward": {
+      "enabled": false
+    }
+  `
   static readonly description =
     "Makes Slack links at the start of your messages invisible, like a forwarded message, based on <@U07FXPUDYDC><https://greasyfork.org/en/scripts/526439-forward-slack-messages-files-and-later-items-to-channels-and-threads-using-an-invisible-link|'s userscript>"
   static readonly authors = '<@U06UYA5GMB5>'
 
-  unpatchMessagePaneInput = () => {}
-  unpatchInputContainer = () => {}
-  unpatchBaseEditMessage = () => {}
+  private unregister = () => {}
 
   start() {
+    this.unregister = this.api.onMessageSendDelta((delta) =>
+      this.transformInvisibleLinks(delta)
+    )
     this.log('Started')
-
-    this.unpatchMessagePaneInput = this.api.patchComponent<{
-      prepareAndSendMessage: (options: {
-        /** Contains the message data */
-        delta: Delta
-      }) => Promise<unknown>
-    }>('MessagePaneInput', (OriginalMessagePaneInput) => (props) => {
-      const patchedPrepareAndSendMessage = React.useCallback(
-        async (options: { delta: Delta }) => {
-          const transformedDelta = this.transformInvisibleLinks(options.delta)
-          return props.prepareAndSendMessage({
-            ...options,
-            delta: transformedDelta,
-          })
-        },
-        [props.prepareAndSendMessage]
-      )
-      return (
-        <OriginalMessagePaneInput
-          {...props}
-          prepareAndSendMessage={patchedPrepareAndSendMessage}
-        />
-      )
-    })
-    this.unpatchInputContainer = this.api.patchComponent<{
-      prepareAndSendMessage: (options: {
-        /** Contains the message data */
-        delta: Delta
-      }) => Promise<unknown>
-    }>('InputContainer', (OriginalInputContainer) => (props) => {
-      const patchedPrepareAndSendMessage = React.useCallback(
-        async (options: { delta: Delta }) => {
-          const transformedDelta = this.transformInvisibleLinks(options.delta)
-          return props.prepareAndSendMessage({
-            ...options,
-            delta: transformedDelta,
-          })
-        },
-        [props.prepareAndSendMessage]
-      )
-      return (
-        <OriginalInputContainer
-          {...props}
-          prepareAndSendMessage={patchedPrepareAndSendMessage}
-        />
-      )
-    })
-    this.unpatchBaseEditMessage = this.api.patchComponent<{
-      prepareAndSaveEditMessage: (options: {
-        /** Contains the message data */
-        delta: Delta
-      }) => Promise<unknown>
-    }>('BaseEditMessage', (OriginalBaseEditMessage) => (props) => {
-      const patchedPrepareAndSaveEditMessage = React.useCallback(
-        async (options: { delta: Delta }) => {
-          const transformedDelta = this.transformInvisibleLinks(options.delta)
-          return props.prepareAndSaveEditMessage({
-            ...options,
-            delta: transformedDelta,
-          })
-        },
-        [props.prepareAndSaveEditMessage]
-      )
-      return (
-        <OriginalBaseEditMessage
-          {...props}
-          prepareAndSaveEditMessage={patchedPrepareAndSaveEditMessage}
-        />
-      )
-    })
   }
 
   stop() {
-    this.unpatchMessagePaneInput()
-    this.unpatchInputContainer()
-    this.unpatchBaseEditMessage()
+    this.unregister()
     this.log('Stopped')
   }
 
@@ -176,7 +112,8 @@ export default class InvisibleForward extends TautPlugin {
       }
     }
 
-    return { ops: newOps }
+    delta.ops = newOps
+    return delta
   }
 
   protected isSlackUrl(url: string): boolean {
@@ -198,24 +135,4 @@ export default class InvisibleForward extends TautPlugin {
     } catch {}
     return false
   }
-}
-
-/**
- * A Delta class, from Quill Delta, @see https://github.com/slab/delta
- * The Deltas we see are document Deltas, which only use the 'insert' operation
- */
-type Delta = {
-  ops: ((
-    | {
-        insert?: string | object
-      }
-    | {
-        delete?: number
-      }
-    | {
-        retain?: number
-      }
-  ) & {
-    attributes?: Record<string, any>
-  })[]
 }

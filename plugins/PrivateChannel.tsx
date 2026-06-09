@@ -1,16 +1,34 @@
-// Shows the ID of private channels
+// Shows the name or ID of private channels
 
-import { TautPlugin, type TautPluginConfig, type TautAPI } from '../core/Plugin'
+import { TautPlugin } from '$taut'
+
+// null means we looked it up and there is no name available
+type ChannelName = string | null
 
 export default class PrivateChannel extends TautPlugin {
-  static readonly pluginName = 'Private Channel ID'
-  static readonly description = 'Shows the ID of private channels'
+  static readonly pluginName = 'Private Channel'
+  static readonly description = 'Shows the name or ID of private channels'
+  static readonly defaultConfig = `
+    // Shows the name or ID of private channels
+    "PrivateChannel": {
+      "enabled": true
+    }
+  `
   static readonly authors = '<@U06UYA5GMB5>'
+
+  private cache = this.api.createCache<ChannelName>('private_channel_names', {
+    ttl: 1 * 60 * 60 * 1000,
+    maxSize: 5000,
+  })
 
   unpatchBaseMrkdwnChannel = () => {}
 
   start() {
     this.log('Started')
+
+    this.cache.load()
+
+    const instance = this
 
     const SvgIcon = this.api.findComponent<{
       inline: boolean
@@ -22,9 +40,24 @@ export default class PrivateChannel extends TautPlugin {
       id: string
     }>('BaseMrkdwnChannel', (OriginalBaseMrkdwnChannel) => (props) => {
       if (props.isNonExistent) {
+        const id = props.id
+
+        const [name, setName] = React.useState<ChannelName | undefined>(() =>
+          instance.cache.get(id)
+        )
+
+        React.useEffect(() => {
+          if (!id) return
+          instance
+            .fetchChannelName(id)
+            .then((fetched) => setName(fetched))
+            .catch(() => {})
+        }, [id])
+
         return (
           <span className="c-missing_channel--private">
-            <SvgIcon inline={true} name="lock" /> {props.id}
+            <SvgIcon inline={true} name="lock" />
+            {name ?? id}
           </span>
         )
       }
@@ -35,5 +68,15 @@ export default class PrivateChannel extends TautPlugin {
   stop() {
     this.unpatchBaseMrkdwnChannel()
     this.log('Stopped')
+  }
+
+  async fetchChannelName(id: string): Promise<ChannelName> {
+    return this.cache.fetch(id, async () => {
+      const response = await fetch(`https://flaron.halceon.dev/cid/${id}`)
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`)
+      const data = await response.json()
+      return typeof data.name === 'string' ? data.name : null
+    })
   }
 }
