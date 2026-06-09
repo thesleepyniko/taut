@@ -25,7 +25,7 @@
   doc.querySelectorAll('script').forEach((s) => s.remove())
 
   // Inject: bridge-setup (sets window.TautBridge), then taut.js, then Slack's scripts
-  const scriptError = (url) =>
+  const scriptError = (/** @type {string} */ url) =>
     `alert('[Taut] Failed to load a script.\\n\\nURL: ' + ${JSON.stringify(url)} + '\\n\\n${url.includes('://localhost') ? 'Make sure your server is running.' : 'Ask in #taut for help.'}')`
 
   const bridgeScript = doc.createElement('script')
