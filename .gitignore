@@ -6,3 +6,4 @@ tmp*
 dist/
 desktop/build/
 .wakatime-project
+.wrangler
