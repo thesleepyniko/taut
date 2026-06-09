@@ -20,9 +20,10 @@
     "taut": "./cli/cli.js"
   },
   "scripts": {
-    "build": "bun run build:taut && bun run build:extension",
+    "build": "bun run build:taut && bun run build:extension && bun run build:userscript",
     "build:taut": "bun ./scripts/buildTaut.ts",
     "build:extension": "bun ./scripts/buildExtension.ts",
+    "build:userscript": "bun ./scripts/buildUserscript.ts",
     "build:desktop": "bun ./scripts/buildDesktop.ts",
     "dev": "bun ./scripts/serveTaut.ts",
     "format": "prettier --write ."

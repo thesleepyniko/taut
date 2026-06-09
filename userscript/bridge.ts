@@ -1,7 +1,10 @@
 // Taut userscript backend
 // Implements TautBridge interface using GM_* APIs for userscript environment
 
+import { emptyConfig, defaultUserCss } from '../app/bundledData'
 import type { TautBridge, Unsubscribe } from '../shared/TautBridge'
+
+declare const __TAUT_LOADER_VERSION__: string
 
 declare function GM_getValue<T>(key: string, defaultValue?: T): T
 declare function GM_setValue(key: string, value: unknown): void
@@ -19,19 +22,20 @@ declare function GM_xmlhttpRequest(details: {
   onerror?: (response: { error: string }) => void
 }): void
 
-import { emptyConfig, defaultUserCss } from '../app/bundledData'
-
 const CONFIG_KEY = 'taut-config'
 const USER_CSS_KEY = 'taut-user-css'
 
-export const UserscriptBackend: TautBridge = {
+const configTextCallbacks = new Set<(text: string) => void>()
+const userCssCallbacks = new Set<(css: string) => void>()
+
+export const userscriptBridge: TautBridge = {
   loader: 'userscript' as const,
-  loaderVersion: '1.0.0',
+  loaderVersion: __TAUT_LOADER_VERSION__,
   bridgeVersion: 1,
 
   warnOutdated() {
     alert(
-      '[Taut] Your Taut userscript is outdated. Please update it from https://jer.app/taut/taut.js'
+      '[Taut] Your Taut userscript is outdated. Please update it from https://jer.app/taut/taut.user.js'
     )
   },
 
@@ -132,6 +136,3 @@ export const UserscriptBackend: TautBridge = {
     })
   },
 }
-
-const configTextCallbacks = new Set<(text: string) => void>()
-const userCssCallbacks = new Set<(css: string) => void>()
