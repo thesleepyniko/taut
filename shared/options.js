@@ -1,6 +1,6 @@
 ;(() => {
-  const OFFICIAL_URL = 'https://jer.app/taut/taut.js'
-  const OFFICIAL_DEBUG_URL = 'https://jer.app/taut/taut.debug.js'
+  const OFFICIAL_URL = 'https://taut.jer.app/taut.js'
+  const OFFICIAL_DEBUG_URL = 'https://taut.jer.app/taut.debug.js'
   const DEV_URL = 'http://localhost:3000/taut.js'
 
   /** @type {'chrome' | 'firefox' | 'electron' | 'userscript'} */
