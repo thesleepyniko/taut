@@ -357,7 +357,13 @@ function MonacoEditor({
   return (
     <div style={style} {...props}>
       {loading && (
-        <div style={{ padding: '8px', fontSize: '12px', color: 'var(--sk_foreground_low)' }}>
+        <div
+          style={{
+            padding: '8px',
+            fontSize: '12px',
+            color: 'var(--sk_foreground_low)',
+          }}
+        >
           Monaco loading...
         </div>
       )}
