@@ -72,7 +72,7 @@ async function bundlePlugins(debug: boolean): Promise<Record<string, string>> {
       entrypoints: [path.join(PLUGINS_DIR, file)],
       target: 'browser',
       format: 'esm',
-      minify: true,
+      minify: !debug,
       sourcemap: debug ? 'inline' : 'none',
       plugins: [globalPluginShim],
       define: { process: 'undefined' },
@@ -110,7 +110,7 @@ async function bundleApp(
     entrypoints: [path.join(ROOT, 'app', 'main.ts')],
     target: 'browser',
     format: 'iife',
-    minify: true,
+    minify: !debug,
     sourcemap: debug ? 'inline' : 'none',
     define: {
       '__TAUT_BUNDLED_PLUGINS__': JSON.stringify(plugins),
