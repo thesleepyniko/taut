@@ -72,7 +72,9 @@ for (const browser of BROWSERS) {
     const manifest = await Bun.file(path.join(srcDir, 'manifest.json')).json()
     if (isEmbedded) {
       manifest.description = `${manifest.description} (with embedded app v${TAUT_VERSION})`
-      manifest.version_name = `${manifest.version}-embedded-${TAUT_VERSION}`
+      if (browser !== 'firefox') {
+        manifest.version_name = `${manifest.version}-embedded-${TAUT_VERSION}`
+      }
       const war = manifest.web_accessible_resources
       if (Array.isArray(war) && typeof war[0] === 'object') {
         // MV3 (Chrome): array of { resources, matches }
