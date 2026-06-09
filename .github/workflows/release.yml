@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,7 +21,8 @@ jobs:
 
       - id: check
         run: |
-          if git diff HEAD~1 HEAD --name-only 2>/dev/null | grep -q 'desktop/package.json'; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             git diff HEAD~1 HEAD --name-only 2>/dev/null | grep -q 'desktop/package.json'; then
             echo "desktop=true" >> $GITHUB_OUTPUT
           else
             echo "desktop=false" >> $GITHUB_OUTPUT
@@ -38,10 +40,6 @@ jobs:
       - name: Build userscript
         run: bun scripts/buildUserscript.ts --standard-only
 
-      - name: Build desktop (win + linux)
-        if: steps.check.outputs.desktop == 'true'
-        run: bun scripts/buildDesktop.ts win linux
-
       - name: Publish to latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,14 +56,8 @@ jobs:
             dist/extension/taut-chrome.zip \
             dist/extension/taut-firefox.zip
 
-      - name: Publish win + linux desktop to latest release
-        if: steps.check.outputs.desktop == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload latest --clobber dist/desktop/*
-
-  release-mac:
-    name: Desktop (mac)
+  release-desktop:
+    name: Desktop (all platforms)
     needs: release
     if: needs.release.outputs.desktop == 'true'
     runs-on: macos-latest
@@ -74,10 +66,10 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
 
-      - name: Build desktop (mac)
-        run: bun scripts/buildDesktop.ts mac
+      - name: Build desktop (all platforms)
+        run: bun scripts/buildDesktop.ts mac win linux
 
-      - name: Publish mac desktop to latest release
+      - name: Publish desktop to latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload latest --clobber dist/desktop/*
