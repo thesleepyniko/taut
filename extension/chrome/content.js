@@ -3,7 +3,7 @@
 ;(async () => {
   const DEFAULT_URL = __TAUT_EMBEDDED__
     ? chrome.runtime.getURL('taut.js')
-    : 'https://jer.app/taut/taut.js'
+    : 'https://taut.jer.app/taut.js'
 
   document.open()
   document.write('<!DOCTYPE html>')

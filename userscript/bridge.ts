@@ -35,7 +35,7 @@ export const userscriptBridge: TautBridge = {
 
   warnOutdated() {
     alert(
-      '[Taut] Your Taut userscript is outdated. Please update it from https://jer.app/taut/taut.user.js'
+      '[Taut] Your Taut userscript is outdated. Please update it from https://taut.jer.app/taut.user.js'
     )
   },
 

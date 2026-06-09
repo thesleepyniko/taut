@@ -41,12 +41,16 @@ async function build(embedded: boolean) {
     process.exit(1)
   }
 
-  const header = headerRaw
+  let header = headerRaw
     .replace(/\$VERSION/g, LOADER_VERSION)
     .replace(
       /\$DESCRIPTION_SUFFIX/g,
       embedded ? ` (with embedded app v${TAUT_VERSION})` : ''
     )
+
+  if (embedded) {
+    header = header.replace(/^\/\/ @(?:updateURL|downloadURL)\s+.*\n/gm, '')
+  }
 
   const optionsHtml = optionsHtmlRaw
     .replace(/__TAUT_EMBEDDED__/g, String(embedded))
@@ -61,6 +65,7 @@ async function build(embedded: boolean) {
   const result = await Bun.build({
     entrypoints: [path.join(USERSCRIPT_SRC, 'main.ts')],
     target: 'browser',
+    minify: true,
     format: 'iife',
     define: {
       __TAUT_VERSION__: JSON.stringify(TAUT_VERSION),
@@ -90,5 +95,6 @@ async function build(embedded: boolean) {
   )
 }
 
-await Promise.all([build(false), build(true)])
+const standardOnly = process.argv.includes('--standard-only')
+await Promise.all(standardOnly ? [build(false)] : [build(false), build(true)])
 console.log('[build-userscript] Done!')

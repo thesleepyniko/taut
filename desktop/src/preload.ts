@@ -43,7 +43,7 @@ const pathsPromise = ipcRenderer.invoke('taut:get-paths')
   try {
     tautUrl = await tautUrlPromise
   } catch {
-    tautUrl = 'https://jer.app/taut/taut.js'
+    tautUrl = 'https://taut.jer.app/taut.js'
   }
 
   const paths = await pathsPromise

@@ -12,7 +12,7 @@ declare const __TAUT_EMBEDDED__: boolean
 // builds default to jer.app.
 const DEFAULT_APP_URL = __TAUT_EMBEDDED__
   ? 'taut://app/taut.js'
-  : 'https://jer.app/taut/taut.js'
+  : 'https://taut.jer.app/taut.js'
 
 function getPrefsPath(): string {
   return path.join(app.getPath('appData'), 'Taut', 'prefs.json')

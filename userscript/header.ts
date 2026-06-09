@@ -14,8 +14,8 @@
 // @grant        GM_openInTab
 // @grant        unsafeWindow
 // @connect      *
-// @updateURL    https://jer.app/taut/taut.js
-// @downloadURL  https://jer.app/taut/taut.js
+// @updateURL    https://taut.jer.app/taut.user.js
+// @downloadURL  https://taut.jer.app/taut.user.js
 // @homepageURL  https://taut.jer.app
 // @supportURL   https://hackclub.slack.com/archives/C0A057686SF
 // ==/UserScript==

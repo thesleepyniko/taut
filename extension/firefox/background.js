@@ -3,7 +3,7 @@
 ;(() => {
   const DEFAULT_URL = __TAUT_EMBEDDED__
     ? browser.runtime.getURL('taut.js')
-    : 'https://jer.app/taut/taut.js'
+    : 'https://taut.jer.app/taut.js'
 
   /** @type {browser.webRequest.RequestFilter} */
   const SLACK_FILTER = {

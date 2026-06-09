@@ -12,12 +12,12 @@ declare const __TAUT_OPTIONS_HTML__: string
 declare const __TAUT_EMBEDDED__: boolean
 declare const __TAUT_APP_JS__: string
 
-const OFFICIAL_URL = 'https://jer.app/taut/taut.js'
+const OFFICIAL_URL = 'https://taut.jer.app/taut.js'
 const EMBEDDED_SENTINEL = '<embedded>'
 const DEFAULT_URL = __TAUT_EMBEDDED__ ? EMBEDDED_SENTINEL : OFFICIAL_URL
 const OPTIONS_URL = 'https://taut.jer.app/options'
 
-// Expose tautPrefs on the real window — used by the options page
+// Expose tautPrefs on the real window
 unsafeWindow.tautPrefs = {
   getUrl: () => Promise.resolve(GM_getValue('tautUrl', DEFAULT_URL)),
   setUrl: (url) => {

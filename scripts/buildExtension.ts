@@ -28,7 +28,10 @@ const LOADER_NAMES: Record<string, string> = {
 }
 
 const BROWSERS = ['chrome', 'firefox'] as const
-const VARIANTS = ['standard', 'embedded'] as const
+type Variant = 'standard' | 'embedded'
+const VARIANTS: Variant[] = process.argv.includes('--standard-only')
+  ? ['standard']
+  : ['standard', 'embedded']
 
 await rm(OUT_ROOT, { recursive: true, force: true })
 
