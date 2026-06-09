@@ -21,7 +21,6 @@ const ELECTRON_VERSION = '42.2.0'
 const ROOT = path.join(import.meta.dir, '..')
 const DESKTOP = path.join(ROOT, 'desktop')
 const SRC = path.join(DESKTOP, 'src')
-const SHARED_OPTIONS = path.join(ROOT, 'extension', 'shared')
 const DIST = path.join(ROOT, 'dist')
 const OUT = path.join(DIST, 'desktop')
 const BUILD_ROOT = path.join(DESKTOP, 'build')
@@ -213,18 +212,16 @@ async function buildJs(variant: Variant) {
     })
   )
 
-  await cp(
-    path.join(SHARED_OPTIONS, 'options.html'),
-    path.join(STAGE, 'options.html')
-  )
-
-  const optionsJs = (
-    await readFile(path.join(SHARED_OPTIONS, 'options.js'), 'utf8')
+  const optionsHtml = (
+    await readFile(path.join(ROOT, 'shared', 'options.html'), 'utf8')
   )
     .replace(/__TAUT_EMBEDDED__/g, String(isEmbedded))
     .replace(/__TAUT_RUNTIME__/g, "'electron'")
-    .replace(/__TAUT_APP_VERSION__/g, isEmbedded ? `'${TAUT_VERSION}'` : "''")
-  await writeFile(path.join(STAGE, 'options.js'), optionsJs, 'utf8')
+    .replace(
+      /__TAUT_EMBEDDED_VERSION__/g,
+      isEmbedded ? `'${TAUT_VERSION}'` : "''"
+    )
+  await writeFile(path.join(STAGE, 'options.html'), optionsHtml, 'utf8')
 }
 
 // electron-builder config per (variant, platform)

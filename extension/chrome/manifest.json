@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Client mod for Slack",
   "author": "Jeremy Woolley",
-  "homepage_url": "https://jer.app/taut",
+  "homepage_url": "https://taut.jer.app",
   "host_permissions": ["https://app.slack.com/*"],
   "optional_host_permissions": ["*://*/*"],
   "permissions": ["storage"],

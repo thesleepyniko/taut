@@ -27,6 +27,13 @@ const header = headerRaw
   .replace(/\$VERSION/g, LOADER_VERSION)
   .replace(/\$DESCRIPTION_SUFFIX/g, '')
 
+const optionsHtml = (
+  await readFile(path.join(ROOT, 'shared', 'options.html'), 'utf8')
+)
+  .replace(/__TAUT_EMBEDDED__/g, 'false')
+  .replace(/__TAUT_RUNTIME__/g, "'userscript'")
+  .replace(/__TAUT_EMBEDDED_VERSION__/g, "''")
+
 const result = await Bun.build({
   entrypoints: [path.join(USERSCRIPT_SRC, 'main.ts')],
   target: 'browser',
@@ -35,6 +42,7 @@ const result = await Bun.build({
     __TAUT_VERSION__: JSON.stringify(TAUT_VERSION),
     __TAUT_LOADER_VERSION__: JSON.stringify(LOADER_VERSION),
     __TAUT_BUNDLED_PLUGINS__: JSON.stringify({}),
+    __TAUT_OPTIONS_HTML__: JSON.stringify(optionsHtml),
   },
 })
 

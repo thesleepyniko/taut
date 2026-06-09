@@ -1,18 +1,21 @@
 // ==UserScript==
 // @name         Taut
-// @namespace    https://jer.app/taut
+// @namespace    https://taut.jer.app
 // @version      $VERSION
 // @description  Client mod for Slack$DESCRIPTION_SUFFIX
 // @author       Jeremy Woolley
 // @match        https://app.slack.com/client/*
+// @match        https://taut.jer.app/options*
 // @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
+// @grant        GM_registerMenuCommand
+// @grant        GM_openInTab
 // @grant        unsafeWindow
 // @connect      *
 // @updateURL    https://jer.app/taut/taut.js
 // @downloadURL  https://jer.app/taut/taut.js
-// @homepageURL  https://jer.app/taut
+// @homepageURL  https://taut.jer.app
 // @supportURL   https://hackclub.slack.com/archives/C0A057686SF
 // ==/UserScript==
