@@ -31,6 +31,11 @@ const pathsPromise = ipcRenderer.invoke('taut:get-paths')
     console.error('[Taut] Failed to eval Slack preload:', e)
   }
 
+  if (!/\/client(\/|$)/.test(location.pathname)) {
+    console.log('[Taut] Skipping patch for non-client page:', location.pathname)
+    return
+  }
+
   let html: string
   try {
     html = await origHtmlPromise
