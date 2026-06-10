@@ -17,12 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - id: check
         run: |
+          BEFORE="${{ github.event.before }}"
+          [[ -z "$BEFORE" || "$BEFORE" =~ ^0+$ ]] && BEFORE="HEAD~1"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
-             git diff HEAD~1 HEAD --name-only 2>/dev/null | grep -q 'desktop/package.json'; then
+             git log "$BEFORE..HEAD" -- desktop/package.json | grep -q .; then
             echo "desktop=true" >> $GITHUB_OUTPUT
           else
             echo "desktop=false" >> $GITHUB_OUTPUT
