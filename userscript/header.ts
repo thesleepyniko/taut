@@ -4,6 +4,7 @@
 // @version      $VERSION
 // @description  Client mod for Slack$DESCRIPTION_SUFFIX
 // @author       Jeremy Woolley
+// @icon         https://taut.jer.app/icon.png
 // @match        https://app.slack.com/client/*
 // @match        https://taut.jer.app/options*
 // @run-at       document-start

@@ -21,6 +21,7 @@
     "build:extension": "bun ./scripts/buildExtension.ts",
     "build:userscript": "bun ./scripts/buildUserscript.ts",
     "build:desktop": "bun ./scripts/buildDesktop.ts",
+    "build:icons": "bun ./scripts/buildIcons.ts",
     "dev": "bun ./scripts/serveTaut.ts",
     "format": "prettier --write .",
     "server:dev": "wrangler dev --config server/wrangler.jsonc",
@@ -49,6 +50,7 @@
     "jsonc-parser": "^3.3.1",
     "monaco-editor": "^0.55.1",
     "prettier": "^3.7.3",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3",
     "@cloudflare/workers-types": "^4.20260609.1",
     "wrangler": "^4.98.0"

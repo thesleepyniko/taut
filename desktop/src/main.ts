@@ -68,6 +68,7 @@ function openOptionsWindow() {
     minimizable: false,
     maximizable: false,
     title: 'Taut Options',
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: optionsPreload,
       contextIsolation: true,

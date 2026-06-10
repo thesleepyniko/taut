@@ -17,6 +17,8 @@ const DIST = path.join(ROOT, 'dist')
 const OUT_ROOT = path.join(DIST, 'extension')
 const TAUT_JS = path.join(DIST, 'taut.debug.js') // embedded builds use the debug version
 const BRIDGE_TEMPLATE = path.join(EXT_SRC, 'shared', 'bridge-setup.template.js')
+const ICONS_DIR = path.join(ROOT, 'assets', 'icons')
+const ICON_SIZES = [16, 32, 48, 128] as const
 
 const TAUT_VERSION: string = (
   await Bun.file(path.join(ROOT, 'package.json')).json()
@@ -59,6 +61,12 @@ for (const browser of BROWSERS) {
     const enc = new TextEncoder()
 
     entries['bridge-setup.js'] = enc.encode(bridgeSetup)
+
+    for (const size of ICON_SIZES) {
+      entries[`icons/icon-${size}.png`] = new Uint8Array(
+        await Bun.file(path.join(ICONS_DIR, `icon-${size}.png`)).arrayBuffer()
+      )
+    }
 
     const substituteOptions = (src: string) =>
       src

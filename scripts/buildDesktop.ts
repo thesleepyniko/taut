@@ -25,6 +25,8 @@ const DIST = path.join(ROOT, 'dist')
 const OUT = path.join(DIST, 'desktop')
 const BUILD_ROOT = path.join(DESKTOP, 'build')
 const STAGE = path.join(BUILD_ROOT, 'app')
+const ICON = path.join(ROOT, 'assets', 'logo.png')
+const MAC_ICON = path.join(ROOT, 'assets', 'logo-macos.png')
 
 /** Version of the taut.js app bundle (root package.json) */
 const TAUT_VERSION: string = JSON.parse(
@@ -235,6 +237,8 @@ async function buildJs(variant: Variant) {
     ),
     'utf8'
   )
+
+  await cp(ICON, path.join(STAGE, 'icon.png'))
 }
 
 // electron-builder config per (variant, platform)
@@ -273,11 +277,17 @@ function makeConfig(variant: Variant, pk: PlatformKey): Configuration {
     protocols: [{ name: 'Slack URL', schemes: ['slack'], role: 'Viewer' }],
     artifactName,
     mac: {
+      icon: MAC_ICON,
       category: 'public.app-category.productivity',
       // Skip signing unless real certs are provided (CSC_LINK/CSC_NAME).
       identity: process.env.CSC_LINK || process.env.CSC_NAME ? undefined : null,
     },
-    linux: { category: 'Utility', mimeTypes: ['x-scheme-handler/slack'] },
+    win: { icon: ICON },
+    linux: {
+      icon: ICON,
+      category: 'Utility',
+      mimeTypes: ['x-scheme-handler/slack'],
+    },
   }
 }
 
