@@ -118,3 +118,10 @@ Other Slack tools from the Hack Club community that may interest you:
 ## License
 
 MIT License
+
+---
+
+<sub>AI use disclaimer: I've used plenty of AI in the creation of this project,
+but all the code is closely reviewed and high-quality. If not for this
+disclaimer, you probably wouldn't be able to tell lol, this is probably the
+project I am most proud of ever making.</sub>
