@@ -6,14 +6,16 @@ Client mod for Slack :D
 
 - Desktop:
   - [Windows](https://taut.jer.app/taut-win.exe)
+    - You may need to close Slack before installing
   - [MacOS](https://taut.jer.app/taut-mac.dmg)
     - Run before launching:
       `xattr -d com.apple.quarantine /Applications/Taut.app`
   - [Linux](https://taut.jer.app/taut-linux.AppImage)
   - Runs separately from your normal Slack desktop app!
+  - Cannot run at the same time as normal Slack
 - Userscript:
   - Requires [Tampermonkey](https://tampermonkey.net/#download), no Safari
-  - Set these settings in the Tampermonkey Dashboard > `Settings`
+  - Set these settings in the Tampermonkey dashboard > `Settings`
     - `General` / `Config mode`: `Advanced`
     - `Security` / `Content Script API`: `UserScripts API Dynamic`
   - Install the [userscript](https://taut.jer.app/taut.user.js)
