@@ -4,6 +4,7 @@
 import path from 'path'
 import { cp, mkdir, rm, rename, readFile, writeFile } from 'fs/promises'
 import { existsSync } from 'fs'
+import { execFileSync } from 'child_process'
 import {
   build as electronBuild,
   Platform,
@@ -36,6 +37,26 @@ const TAUT_VERSION: string = JSON.parse(
 const DESKTOP_VERSION: string = JSON.parse(
   await readFile(path.join(DESKTOP, 'package.json'), 'utf8')
 ).version
+
+const MAC_SIGN_IDENTITY = 'Taut Code Signing'
+
+function resolveMacIdentity(): string | null | undefined {
+  if (process.env.CSC_LINK || process.env.CSC_NAME) return undefined
+  if (process.platform !== 'darwin') return null
+  try {
+    const out = execFileSync(
+      'security',
+      ['find-identity', '-v', '-p', 'codesigning'],
+      { encoding: 'utf8' }
+    )
+    if (out.includes(MAC_SIGN_IDENTITY)) return MAC_SIGN_IDENTITY
+  } catch {
+    // `security` unavailable or no identities; fall through to skip signing
+  }
+  return null
+}
+
+const MAC_IDENTITY = resolveMacIdentity()
 
 type Variant = 'standard' | 'embedded'
 type PlatformKey = 'mac' | 'mac-x64' | 'win' | 'win-arm' | 'linux' | 'linux-arm'
@@ -279,8 +300,9 @@ function makeConfig(variant: Variant, pk: PlatformKey): Configuration {
     mac: {
       icon: MAC_ICON,
       category: 'public.app-category.productivity',
-      // Skip signing unless real certs are provided (CSC_LINK/CSC_NAME).
-      identity: process.env.CSC_LINK || process.env.CSC_NAME ? undefined : null,
+      identity: MAC_IDENTITY,
+      hardenedRuntime: false,
+      gatekeeperAssess: false,
     },
     win: { icon: ICON },
     linux: {
@@ -314,6 +336,15 @@ async function packageVariant(variant: Variant, platforms: PlatformKey[]) {
 
   for (const pk of platforms) {
     const def = PLATFORMS[pk]
+    if (def.os === 'mac') {
+      const how =
+        MAC_IDENTITY === undefined
+          ? 'cert from CSC_LINK/CSC_NAME'
+          : MAC_IDENTITY
+            ? `identity "${MAC_IDENTITY}"`
+            : 'UNSIGNED (no cert found; notifications and stuff will not register)'
+      console.log(`[build-desktop] macOS signing: ${how}`)
+    }
     const artifacts = await electronBuild({
       projectDir: DESKTOP,
       targets: def.platform.createTarget(def.targets, ...def.archs),

@@ -1,7 +1,14 @@
 // Taut Desktop Main Process
 // Orchestrates startup: loads prefs, patches electron, sets up session/bridge, loads Slack
 
-import { app, dialog, protocol, BrowserWindow, session } from 'electron'
+import {
+  app,
+  dialog,
+  protocol,
+  BrowserWindow,
+  session,
+  Notification,
+} from 'electron'
 import { createRequire } from 'module'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -13,7 +20,7 @@ import { findSlackAsar } from './slackFinder.js'
 import { applyPatches, setOpenOptionsWindow } from './patch.js'
 import { setupSession } from './session.js'
 import { setupBridge } from './bridge.js'
-import { loadPrefs, getAppUrl, savePrefs } from './prefs.js'
+import { loadPrefs, getAppUrl, savePrefs, getNotifPrompted } from './prefs.js'
 
 const cjsRequire = createRequire(import.meta.url)
 
@@ -82,7 +89,23 @@ setOpenOptionsWindow(openOptionsWindow)
 
 applyPatches(slackAsarPath, path.join(__dirname, 'preload.js'))
 
+function requestNotificationPermission() {
+  try {
+    if (!Notification.isSupported()) return
+    if (getNotifPrompted()) return
+    const notification = new Notification({
+      title: 'Taut',
+      body: 'Notifications are enabled! Manage them in System Settings > Notifications.',
+    })
+    notification.show()
+    savePrefs({ notifPrompted: true })
+  } catch (e: any) {
+    console.error('[Taut] Notification permission request failed:', e.message)
+  }
+}
+
 app.whenReady().then(async () => {
+  requestNotificationPermission()
   setupSession(realResourcesPath)
 
   try {

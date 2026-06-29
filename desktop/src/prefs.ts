@@ -20,6 +20,7 @@ function getPrefsPath(): string {
 
 interface TautPrefs {
   appUrl?: string
+  notifPrompted?: boolean
 }
 
 let cached: TautPrefs | null = null
@@ -43,4 +44,8 @@ export async function savePrefs(prefs: Partial<TautPrefs>): Promise<void> {
 
 export function getAppUrl(): string {
   return cached?.appUrl ?? DEFAULT_APP_URL
+}
+
+export function getNotifPrompted(): boolean {
+  return cached?.notifPrompted ?? false
 }
