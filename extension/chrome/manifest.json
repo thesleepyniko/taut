@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Taut",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Client mod for Slack",
   "author": "Jeremy Woolley",
   "homepage_url": "https://taut.jer.app",
@@ -11,9 +11,9 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "host_permissions": ["https://app.slack.com/*"],
+  "host_permissions": ["https://*.slack.com/*"],
   "optional_host_permissions": ["*://*/*"],
-  "permissions": ["storage"],
+  "permissions": ["storage", "cookies", "declarativeNetRequestWithHostAccess"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": false

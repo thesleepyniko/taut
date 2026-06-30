@@ -13,6 +13,7 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_registerMenuCommand
 // @grant        GM_openInTab
+// @grant        GM_cookie
 // @grant        unsafeWindow
 // @connect      *
 // @updateURL    https://taut.jer.app/taut.user.js

@@ -1,6 +1,7 @@
 // Taut Desktop Preload
 
 import type { TautBridge } from '../../shared/TautBridge'
+import type { RpcMethod, RpcArgs, RpcResult, SerialFetchInit } from './rpc'
 
 declare const __TAUT_LOADER_VERSION__: string
 
@@ -57,17 +58,32 @@ if (isClientPage) {
 
   const paths = await pathsPromise
 
+  const call = <M extends RpcMethod>(
+    method: M,
+    args: RpcArgs<M>
+  ): Promise<RpcResult<M>> => ipcRenderer.invoke('taut:rpc', method, args)
+
   contextBridge.exposeInMainWorld('TautBridge', {
     loader: 'electron' as const,
     loaderVersion: __TAUT_LOADER_VERSION__,
-    bridgeVersion: 1,
+    bridgeVersion: 2,
     PATHS: paths,
+
+    cookies: {
+      get: (details) => call('cookieGet', [details]).catch(() => null),
+      getAll: (details) => call('cookieGetAll', [details]).catch(() => []),
+      set: (cookie) => call('cookieSet', [cookie]).catch(() => false),
+      remove: (details) => call('cookieRemove', [details]).catch(() => false),
+    },
+
+    readSecret: (key) => call('readSecret', [key]).catch(() => null),
+    writeSecret: (key, value) =>
+      call('writeSecret', [key, value]).catch(() => false),
 
     start: () => ipcRenderer.invoke('taut:setup-watchers'),
 
-    readConfigText: () => ipcRenderer.invoke('taut:read-config-text'),
-    writeConfigText: (text: string) =>
-      ipcRenderer.invoke('taut:write-config-text', text),
+    readConfigText: () => call('readConfigText', []),
+    writeConfigText: (text) => call('writeConfigText', [text]),
 
     onConfigTextChange(cb: (text: string) => void) {
       const handler = (_: unknown, text: string) => cb(text)
@@ -76,9 +92,8 @@ if (isClientPage) {
         ipcRenderer.removeListener('taut:config-text-changed', handler)
     },
 
-    readUserCss: () => ipcRenderer.invoke('taut:read-user-css'),
-    writeUserCss: (css: string) =>
-      ipcRenderer.invoke('taut:write-user-css', css),
+    readUserCss: () => call('readUserCss', []),
+    writeUserCss: (css) => call('writeUserCss', [css]),
 
     onUserCssChange(cb: (css: string) => void) {
       const handler = (_: unknown, css: string) => cb(css)
@@ -86,8 +101,39 @@ if (isClientPage) {
       return () => ipcRenderer.removeListener('taut:user-css-changed', handler)
     },
 
-    // CORS bypassed via webRequest in main process
-    fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, init),
+    fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url
+      const serialInit: SerialFetchInit = {}
+      if (init?.method) serialInit.method = init.method
+      if (init?.body && typeof init.body === 'string')
+        serialInit.body = init.body
+      if (init?.headers) {
+        const headers: Record<string, string> = {}
+        if (init.headers instanceof Headers) {
+          init.headers.forEach((v, k) => {
+            headers[k] = v
+          })
+        } else if (Array.isArray(init.headers)) {
+          for (const [k, v] of init.headers) headers[k] = v
+        } else {
+          Object.assign(headers, init.headers)
+        }
+        serialInit.headers = headers
+      }
+      return call('fetch', [url, serialInit]).then(
+        (r) =>
+          new Response(r.body, {
+            status: r.status,
+            statusText: r.statusText,
+            headers: r.headers,
+          })
+      )
+    },
 
     warnOutdated: () => ipcRenderer.invoke('taut:warn-outdated'),
   } satisfies TautBridge)

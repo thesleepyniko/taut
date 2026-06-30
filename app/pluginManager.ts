@@ -12,6 +12,7 @@ import { setStyle, removeStyle } from './api/css'
 import { TypedEventTarget, deepEqual } from './helpers'
 import { setupMessageSendDelta } from './api/messageSend'
 import { createCache } from './api/cache'
+import { AccountSwitcher } from './api/accountSwitcher'
 
 import {
   TautPlugin,
@@ -35,6 +36,8 @@ async function makeTautAPI(bridge: TautBridge) {
     findComponent: await findComponentPromise,
     patchComponent,
     fetch: bridge.fetch.bind(bridge),
+    cookies: bridge.cookies ?? null,
+    accounts: new AccountSwitcher(bridge),
     commonModules: {
       react: await reactPromise,
     },

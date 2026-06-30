@@ -7,7 +7,7 @@
  * Plugin configuration object stored in config.jsonc
  * Each plugin has an `enabled` flag and can have additional custom properties
  */
-export interface TautPluginConfig {
+export type TautPluginConfig = {
   enabled: boolean
   [key: string]: unknown
 }
@@ -35,6 +35,18 @@ export type TautPaths = {
 
 /** Cleanup function returned by subscription methods */
 export type Unsubscribe = () => void
+
+export type TautCookie = {
+  name: string
+  value: string
+  domain?: string
+  path?: string
+  secure?: boolean
+  httpOnly?: boolean
+  sameSite?: 'no_restriction' | 'lax' | 'strict' | 'unspecified'
+  /** Expiry in Unix seconds. Omit for a session cookie. */
+  expirationDate?: number
+}
 
 /**
  * TautBridge interface
@@ -115,6 +127,32 @@ export type TautBridge = {
    * CORS-bypassing fetch.
    */
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
+
+  /**
+   * Cookie read/write outside the page sandbox, or `null` if the loader can't
+   * do it (e.g. a userscript manager without `GM_cookie`).
+   */
+  readonly cookies: null | {
+    get(details: { url: string; name: string }): Promise<TautCookie | null>
+    getAll(details: {
+      url?: string
+      domain?: string
+      name?: string
+    }): Promise<TautCookie[]>
+    /** `url` selects the cookie store and provides default domain/path. */
+    set(cookie: TautCookie & { url: string }): Promise<boolean>
+    remove(details: { url: string; name: string }): Promise<boolean>
+  }
+
+  /**
+   * Taut-private key/value store for secrets (e.g. saved account tokens),
+   * backed by GM storage / `chrome.storage.local` / a file in `tautDir`. Kept
+   * out of `config.jsonc` (user-editable, shown in the editor).
+   * @returns the stored string, or `null` if unset.
+   */
+  readSecret(key: string): Promise<string | null>
+  /** Write a secret. @returns true on success. Added in bridgeVersion 2. */
+  writeSecret(key: string, value: string): Promise<boolean>
 
   /**
    * Paths to Taut directories and files

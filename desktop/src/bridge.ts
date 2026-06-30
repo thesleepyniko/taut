@@ -2,9 +2,10 @@
 // IPC handlers for config/CSS management and fetch relay
 
 import { promises as fs, watch } from 'fs'
-import { ipcMain } from 'electron'
+import { ipcMain, session, safeStorage, net } from 'electron'
 import os from 'os'
 import path from 'path'
+import type { DesktopRpc } from './rpc'
 
 export interface BridgeConfig {
   configDir: string
@@ -91,52 +92,129 @@ export function setupBridge(
     }
   })
 
-  // Config
-  ipcMain.handle('taut:read-config-text', async () => {
-    try {
-      if (await fileExists(configFile))
-        return await fs.readFile(configFile, 'utf8')
-    } catch {}
-    return ''
-  })
+  const cookies = () => session.defaultSession.cookies
 
-  ipcMain.handle('taut:write-config-text', async (_, text: string) => {
+  const secretsFile = path.join(config.configDir, 'secrets.dat')
+
+  async function readSecrets(): Promise<Record<string, string>> {
+    try {
+      if (!(await fileExists(secretsFile))) return {}
+      const raw = await fs.readFile(secretsFile)
+      const json = safeStorage.isEncryptionAvailable()
+        ? safeStorage.decryptString(raw)
+        : raw.toString('utf8')
+      return JSON.parse(json)
+    } catch {
+      return {}
+    }
+  }
+
+  async function writeSecrets(
+    secrets: Record<string, string>
+  ): Promise<boolean> {
     try {
       await fs.mkdir(config.configDir, { recursive: true })
-      await fs.writeFile(configFile, text, 'utf8')
+      const json = JSON.stringify(secrets)
+      const data = safeStorage.isEncryptionAvailable()
+        ? safeStorage.encryptString(json)
+        : Buffer.from(json, 'utf8')
+      await fs.writeFile(secretsFile, data)
       return true
-    } catch {
-      return false
-    }
-  })
-
-  // User CSS
-  ipcMain.handle('taut:read-user-css', async () => {
-    try {
-      if (await fileExists(userCssFile))
-        return await fs.readFile(userCssFile, 'utf8')
-    } catch {}
-    return ''
-  })
-
-  ipcMain.handle('taut:write-user-css', async (_, css: string) => {
-    try {
-      await fs.mkdir(config.configDir, { recursive: true })
-      await fs.writeFile(userCssFile, css, 'utf8')
-      return true
-    } catch {
-      return false
-    }
-  })
-
-  // Fetch relay
-  ipcMain.handle('taut:fetch', async (_, url: string, init?: RequestInit) => {
-    try {
-      const resp = await fetch(url, init)
-      const text = await resp.text()
-      return { ok: resp.ok, status: resp.status, text }
     } catch (e) {
-      return { error: String(e) }
+      console.error('[Taut] write-secret failed:', e)
+      return false
     }
+  }
+
+  async function readTextFile(file: string, fallback: string): Promise<string> {
+    try {
+      if (await fileExists(file)) return await fs.readFile(file, 'utf8')
+    } catch {}
+    return fallback
+  }
+
+  async function writeTextFile(file: string, text: string): Promise<boolean> {
+    try {
+      await fs.mkdir(config.configDir, { recursive: true })
+      await fs.writeFile(file, text, 'utf8')
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const rpcMethods: DesktopRpc = {
+    fetch: (url, init) =>
+      new Promise((resolve, reject) => {
+        const headers = { ...(init.headers ?? {}) }
+        const hasCookie = Object.keys(headers)
+          .map((h) => h.toLowerCase())
+          .includes('cookie')
+        const req = net.request({
+          method: init.method ?? 'GET',
+          url,
+          useSessionCookies: !hasCookie,
+        })
+        for (const [k, v] of Object.entries(headers)) req.setHeader(k, v)
+        req.on('response', (res) => {
+          /** @type {Buffer[]} */
+          const chunks: Buffer[] = []
+          res.on('data', (c) => chunks.push(c as Buffer))
+          res.on('end', () => {
+            const respHeaders: Record<string, string> = {}
+            for (const [k, v] of Object.entries(res.headers))
+              respHeaders[k] = Array.isArray(v) ? v.join(', ') : String(v)
+            resolve({
+              status: res.statusCode,
+              statusText: res.statusMessage,
+              headers: respHeaders,
+              body: Buffer.concat(chunks).toString('utf8'),
+            })
+          })
+        })
+        req.on('error', reject)
+        if (init.body) req.write(init.body)
+        req.end()
+      }),
+    readConfigText: () => readTextFile(configFile, ''),
+    writeConfigText: (text) => writeTextFile(configFile, text),
+    readUserCss: () => readTextFile(userCssFile, ''),
+    writeUserCss: (text) => writeTextFile(userCssFile, text),
+    readSecret: async (key) => (await readSecrets())[key] ?? null,
+    writeSecret: async (key, value) => {
+      const secrets = await readSecrets()
+      secrets[key] = value
+      return writeSecrets(secrets)
+    },
+    cookieGet: async (details) =>
+      (await cookies().get({ url: details.url, name: details.name }))[0] ??
+      null,
+    cookieGetAll: (details) => cookies().get(details),
+    cookieSet: async (cookie) => {
+      try {
+        await cookies().set(cookie)
+        return true
+      } catch (e) {
+        console.error('[Taut] cookieSet failed:', e)
+        return false
+      }
+    },
+    cookieRemove: async (details) => {
+      try {
+        await cookies().remove(details.url, details.name)
+        return true
+      } catch (e) {
+        console.error('[Taut] cookieRemove failed:', e)
+        return false
+      }
+    },
+  }
+
+  ipcMain.handle('taut:rpc', (_event, method: string, args: unknown[]) => {
+    const fn = (rpcMethods as Record<string, (...a: unknown[]) => unknown>)[
+      method
+    ]
+    if (!fn) throw new Error(`[Taut] Unknown RPC method: ${method}`)
+    return fn(...args)
   })
 }
