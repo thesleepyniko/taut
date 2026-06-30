@@ -16,7 +16,7 @@ export interface TautPluginConfig {
  * Paths to Taut directories and files
  * Used by Electron backend for filesystem operations
  */
-export interface TautPaths {
+export type TautPaths = {
   /** Root Taut configuration directory */
   tautDir: string
   /** Directory containing core plugins */
@@ -41,7 +41,7 @@ export type Unsubscribe = () => void
  * Abstracts the communication layer between the app and backend.
  * Implemented by each loader: Chrome extension, Firefox extension, Electron preload.
  */
-export interface TautBridge {
+export type TautBridge = {
   /** Which loader is providing this bridge */
   readonly loader:
     | 'chrome-extension'
