@@ -120,8 +120,12 @@ jobs:
 
       - name: Build desktop (all platforms)
         env:
-          CSC_NAME: ${{ steps.signing.outputs.enabled == 'true' && 'Taut Code Signing' || '' }}
-          CSC_KEYCHAIN: ${{ steps.signing.outputs.enabled == 'true' && format('{0}/taut-signing.keychain-db', runner.temp) || '' }}
+          CSC_NAME:
+            ${{ steps.signing.outputs.enabled == 'true' && 'Taut Code Signing'
+            || '' }}
+          CSC_KEYCHAIN:
+            ${{ steps.signing.outputs.enabled == 'true' &&
+            format('{0}/taut-signing.keychain-db', runner.temp) || '' }}
         run: bun scripts/buildDesktop.ts mac win linux
 
       - name: Publish desktop to latest release
