@@ -8,7 +8,7 @@ import {
   patchComponentPromise,
 } from './slack/react'
 import type { ConfigStore } from './configStore'
-import type { PluginInfo, PluginManager } from './pluginManager'
+import type { PluginManager } from './pluginManager'
 import { initMonaco, type Monaco } from './cdn'
 import { tautVersion } from './bundledData'
 
@@ -379,50 +379,38 @@ function PluginList({
   pluginManager: PluginManager
   configStore: ConfigStore
 }) {
-  const [pluginInfo, setPluginInfo] = React.useState(() =>
-    pluginManager.getPluginInfo()
-  )
+  const pluginInfo = pluginManager.pluginInfoStore.use()
   const [togglingPlugins, setTogglingPlugins] = React.useState<Set<string>>(
     () => new Set()
   )
 
-  const pluginInfoRef = React.useRef(pluginInfo)
-  React.useEffect(() => {
-    pluginInfoRef.current = pluginInfo
-  })
-
+  const prevPluginInfoRef = React.useRef(pluginInfo)
   const timeoutsRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map()
   )
 
   React.useEffect(() => {
-    const onChange = (event: CustomEvent<PluginInfo>) => {
-      const newPluginInfo = event.detail
-      const oldPluginInfo = pluginInfoRef.current
+    const oldPluginInfo = prevPluginInfoRef.current
+    prevPluginInfoRef.current = pluginInfo
+    if (oldPluginInfo === pluginInfo) return
 
-      setTogglingPlugins((prev) => {
-        const next = new Set(prev)
-        for (const id of prev) {
-          const oldP = oldPluginInfo.find((p) => p.id === id)
-          const newP = newPluginInfo.find((p) => p.id === id)
-          if (oldP && newP && oldP.enabled !== newP.enabled) {
-            next.delete(id)
-            const timeout = timeoutsRef.current.get(id)
-            if (timeout) {
-              clearTimeout(timeout)
-              timeoutsRef.current.delete(id)
-            }
+    setTogglingPlugins((prev) => {
+      const next = new Set(prev)
+      for (const id of prev) {
+        const oldP = oldPluginInfo.find((p) => p.id === id)
+        const newP = pluginInfo.find((p) => p.id === id)
+        if (oldP && newP && oldP.enabled !== newP.enabled) {
+          next.delete(id)
+          const timeout = timeoutsRef.current.get(id)
+          if (timeout) {
+            clearTimeout(timeout)
+            timeoutsRef.current.delete(id)
           }
         }
-        return next
-      })
-      setPluginInfo(newPluginInfo)
-    }
-    pluginManager.on('pluginInfoChanged', onChange)
-    return () => {
-      pluginManager.off('pluginInfoChanged', onChange)
-    }
-  }, [])
+      }
+      return next
+    })
+  }, [pluginInfo])
 
   const handleToggle = async (id: string, enabled: boolean) => {
     setTogglingPlugins((prev) => new Set(prev).add(id))

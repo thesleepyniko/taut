@@ -23,6 +23,11 @@
 //   unlike localStorage, persists across the reload and needs no re-apply.
 
 import type { TautBridge, TautCookie } from '../../shared/TautBridge'
+import {
+  readLocalConfig,
+  getActiveTeam,
+  type LocalConfigTeam,
+} from './localConfig'
 
 const SLACK_URL = 'https://app.slack.com'
 const COOKIE_DOMAIN = '.slack.com'
@@ -32,38 +37,12 @@ const PENDING_SWITCH_KEY = 'taut:pendingSwitch' // localStorage handoff key
 // Slack's per-session cookies, all must be cleared for a new account to be logged in
 const SESSION_COOKIES = ['d', 'd-s', 'uc']
 
-// A localConfig_v2 team entry, whole thing needs to be restored
-type LocalConfigTeam = {
-  id: string
-  name: string
-  domain: string
-  user_id: string
-  token: string
-  url?: string
-  [key: string]: unknown
-}
-
-type LocalConfig = {
-  teams?: Record<string, LocalConfigTeam>
-  lastActiveTeamId?: string
-  orderedTeamIds?: string[]
-  [key: string]: unknown
-}
-
 export type StoredAccount = {
   userId: string
   teamId: string
   team: LocalConfigTeam
   xoxd: string
   updatedAt: number
-}
-
-function readLocalConfig(): LocalConfig {
-  try {
-    return JSON.parse(localStorage.getItem('localConfig_v2') || '{}')
-  } catch {
-    return {}
-  }
 }
 
 export class AccountSwitcher {
@@ -199,8 +178,8 @@ export class AccountSwitcher {
     if (!this.supported || !this.cookies) return null
     const localConfig = readLocalConfig()
     const teamId = localConfig.lastActiveTeamId
-    const team = teamId ? localConfig.teams?.[teamId] : undefined
-    if (!teamId || !team?.token) return null
+    const team = getActiveTeam(localConfig)
+    if (!teamId || !team?.token || !team.user_id) return null
 
     const sessionCookie = await this.cookies.get({ url: SLACK_URL, name: 'd' })
     if (!sessionCookie?.value) return null
@@ -260,9 +239,7 @@ export class AccountSwitcher {
     const saved = await this.captureCurrent()
     const localConfig = readLocalConfig()
     const teamId = localConfig.lastActiveTeamId
-    const domain =
-      saved?.team.domain ??
-      (teamId ? localConfig.teams?.[teamId]?.domain : undefined)
+    const domain = saved?.team.domain ?? getActiveTeam(localConfig)?.domain
 
     // kill all session cookies
     for (const name of SESSION_COOKIES) {
@@ -279,10 +256,15 @@ export class AccountSwitcher {
       localStorage.setItem('localConfig_v2', JSON.stringify(localConfig))
     }
 
+    // TODO: improve login (desktop in-app login? automatically sign out HCA?)
     if (domain === 'hackclub') {
-      const url = 'https://auth.hackclub.com/welcome'
-      if (this.bridge.loader === 'electron') window.open(url, '_blank')
-      else location.assign(url)
+      const url = 'https://auth.hackclub.com'
+      if (this.bridge.loader === 'electron') {
+        window.open(url, '_blank')
+        location.reload()
+      } else {
+        location.assign(url)
+      }
     } else {
       location.assign(domain ? `https://${domain}.slack.com` : SLACK_URL)
     }

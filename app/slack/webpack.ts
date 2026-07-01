@@ -17,6 +17,37 @@ const global = globalThis as any
 let __webpack_require__: WebpackRequire | null = null
 const __webpackModuleRegistry = new Map<PropertyKey, Exports>()
 
+// Unwrapped module factories, so their .toString() is the
+// original source (for debug)
+/** key: module id */
+const __webpackModuleFactories = new Map<string, ModuleFactory>()
+// First module to export a given value, for debug
+const __webpackExportOwners = new WeakMap<object, string>()
+
+function registerExportOwner(moduleId: string, exports: any) {
+  if (
+    !exports ||
+    (typeof exports !== 'object' && typeof exports !== 'function')
+  )
+    return
+  if (!__webpackExportOwners.has(exports)) {
+    __webpackExportOwners.set(exports, moduleId)
+  }
+  for (const key in exports) {
+    if (!Object.prototype.hasOwnProperty.call(exports, key)) continue
+    try {
+      const value = exports[key]
+      if (
+        value &&
+        (typeof value === 'object' || typeof value === 'function') &&
+        !__webpackExportOwners.has(value)
+      ) {
+        __webpackExportOwners.set(value, moduleId)
+      }
+    } catch {}
+  }
+}
+
 // Export Matching Helpers
 
 type ExportMatcher<T> = (exp: any) => exp is T
@@ -112,26 +143,52 @@ export function forEachExport(
   })
 }
 
+// Module Exports Patching
+
+type ModuleExportsPatcher = (exports: any, moduleId: string) => any | void
+const moduleExportsPatchers = new Set<ModuleExportsPatcher>()
+
+export function patchModuleExports(patcher: ModuleExportsPatcher): void {
+  moduleExportsPatchers.add(patcher)
+}
+
 // Factory Wrapping
 
 function wrapModuleFactory(
   moduleId: PropertyKey,
   factory: ModuleFactory
 ): ModuleFactory {
-  return function wrappedFactory(
+  if ((factory as any).__tautWrapped) return factory
+
+  __webpackModuleFactories.set(String(moduleId), factory)
+
+  const wrappedFactory = function wrappedFactory(
     module: WebpackModule,
     exports: Exports,
     require: WebpackRequire
   ): any {
     const result = factory.call(exports, module, exports, require)
 
-    const moduleExports = module.exports
+    let moduleExports = module.exports
+    for (const patcher of moduleExportsPatchers) {
+      try {
+        const replaced = patcher(moduleExports, String(moduleId))
+        if (replaced !== undefined && replaced !== moduleExports) {
+          module.exports = replaced
+          moduleExports = replaced
+        }
+      } catch {}
+    }
     __webpackModuleRegistry.set(moduleId, moduleExports)
+    registerExportOwner(String(moduleId), moduleExports)
     checkPendingMatchers(moduleExports)
     for (const cb of moduleLoadCallbacks) cb(moduleExports)
 
     return result
   }
+
+  ;(wrappedFactory as any).__tautWrapped = true
+  return wrappedFactory
 }
 
 // Push Interception
@@ -276,9 +333,40 @@ export const findByPropsPromise = (async () => {
   return findByProps
 })()
 
+// Source Inspection
+
+/** Get the source of a webpack module by id */
+export function getModuleSource(id: PropertyKey): string {
+  const factory = __webpackModuleFactories.get(String(id))
+  if (!factory) throw new Error(`[Taut] No module found with id: ${String(id)}`)
+  return factory.toString()
+}
+/** Find the id of the module that exported the given value, if any */
+export function findModuleId(value: any): string | undefined {
+  if (!value || (typeof value !== 'object' && typeof value !== 'function'))
+    return undefined
+  return __webpackExportOwners.get(value)
+}
+/**
+ * Get the source of the module that exported the given value, falls back to
+ * the value's own `.toString()` if no owning module can be found
+ */
+export function getValueSource(value: any): string {
+  const id = findModuleId(value)
+  if (id !== undefined) return getModuleSource(id)
+  if (typeof value === 'function') return value.toString()
+  throw new Error(`[Taut] Could not find a module or source for value`, {
+    cause: value,
+  })
+}
+
 // Debug Globals
 
 global.__webpackModuleRegistry = __webpackModuleRegistry
+global.__webpackModuleFactories = __webpackModuleFactories
 global.allExports = allExports
 global.findExport = findExport
 global.findByProps = findByProps
+global.getModuleSource = getModuleSource
+global.findModuleId = findModuleId
+global.getValueSource = getValueSource

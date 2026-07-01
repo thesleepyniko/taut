@@ -8,11 +8,15 @@ import {
   findComponentPromise,
   patchComponentPromise,
 } from './slack/react'
+import { reduxPromise } from './slack/redux'
+import { membersPromise } from './slack/members'
 import { setStyle, removeStyle } from './api/css'
-import { TypedEventTarget, deepEqual } from './helpers'
+import { deepEqual } from './helpers'
 import { setupMessageSendDelta } from './api/messageSend'
 import { createCache } from './api/cache'
+import { Store } from './api/store'
 import { AccountSwitcher } from './api/accountSwitcher'
+import { userAPI } from './api/userAPI'
 
 import {
   TautPlugin,
@@ -35,14 +39,19 @@ async function makeTautAPI(bridge: TautBridge) {
     findByProps: await findByPropsPromise,
     findComponent: await findComponentPromise,
     patchComponent,
+    redux: await reduxPromise,
+    members: await membersPromise,
     fetch: bridge.fetch.bind(bridge),
+    userAPI,
     cookies: bridge.cookies ?? null,
     accounts: new AccountSwitcher(bridge),
     commonModules: {
       react: await reactPromise,
     },
     onMessageSendDelta: setupMessageSendDelta(patchComponent),
+    // i wish this was a class and not a factory function
     createCache,
+    Store,
   }
   global.TautAPI = TautAPI
   console.log('[Taut] TautAPI initialized', TautAPI)
@@ -50,9 +59,7 @@ async function makeTautAPI(bridge: TautBridge) {
 }
 export type TautAPI = Awaited<ReturnType<typeof makeTautAPI>>
 
-export class PluginManager extends TypedEventTarget<{
-  pluginInfoChanged: PluginInfo
-}> {
+export class PluginManager {
   readonly tautAPIPromise: Promise<TautAPI>
   plugins = new Map<
     string,
@@ -61,13 +68,13 @@ export class PluginManager extends TypedEventTarget<{
       instance: TautPlugin | null
     }
   >()
+  readonly pluginInfoStore = new Store<PluginInfo>(this.getPluginInfo())
   private prevPluginConfigs = new Map<string, TautPluginConfig>()
 
   constructor(
     protected bridge: TautBridge,
     protected configStore: ConfigStore
   ) {
-    super()
     this.tautAPIPromise = makeTautAPI(bridge)
 
     this.configStore.onConfigChange((newConfig) => {
@@ -127,7 +134,7 @@ export class PluginManager extends TypedEventTarget<{
 
       this.prevPluginConfigs.set(name, structuredClone(config))
       this.plugins.set(name, { PluginClass, instance })
-      this.emit('pluginInfoChanged', this.getPluginInfo())
+      this.pluginInfoStore.set(this.getPluginInfo())
       console.log(`[Taut] Plugin ${name} loaded`)
       return true
     } catch (err) {
@@ -182,7 +189,7 @@ export class PluginManager extends TypedEventTarget<{
       instance,
     })
 
-    this.emit('pluginInfoChanged', this.getPluginInfo())
+    this.pluginInfoStore.set(this.getPluginInfo())
     console.log(`[Taut] Plugin ${name} config updated`)
   }
 

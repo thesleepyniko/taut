@@ -40,22 +40,5 @@ export async function bootstrap(bridge: TautBridge): Promise<void> {
 
   await addSettingsTab(pluginManager, configStore)
 
-  // try to capture the logged-in account
-  // not sure what to wait for but this works lol
-  // TODO: figure out a better way to do this
-  pluginManager.tautAPIPromise
-    .then(async (api) => {
-      if (!api.accounts.supported) return
-      for (let attempt = 0; attempt < 10; attempt++) {
-        try {
-          if (await api.accounts.captureCurrent()) return
-        } catch (e) {
-          console.error('[Taut] Account capture failed:', e)
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
-    })
-    .catch((e) => console.error('[Taut] Account capture failed:', e))
-
   console.log('[Taut] Taut initialized')
 }
