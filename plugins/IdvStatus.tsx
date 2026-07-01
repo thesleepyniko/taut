@@ -93,8 +93,7 @@ export default class IdvStatus extends TautPlugin {
       `
     )
 
-    // @ts-ignore
-    window.tautIdvClearCache = () => this.cache.clear()
+    global.tautIdvClearCache = () => this.cache.clear()
 
     this.log('IDV Status loaded')
   }
@@ -103,8 +102,7 @@ export default class IdvStatus extends TautPlugin {
     this.unpatchBaseMessageSender()
     this.api.removeStyle('idv-status')
 
-    // @ts-ignore
-    delete window.tautIdvClearCache
+    delete global.tautIdvClearCache
 
     this.log('Stopped')
   }
