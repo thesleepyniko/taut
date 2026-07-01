@@ -1,101 +1,96 @@
 // Persistent cache with per-item TTL and fetch deduplication for plugin use
 
-export interface TautCache<T> {
-  load(): void
-  get(key: string): T | undefined
-  set(key: string, value: T): void
-  fetch(key: string, fetcher: () => Promise<T>): Promise<T>
-  clear(): void
-}
-
 type CacheEntry<T> = { value: T; ts: number }
 
-export function createCache<T>(
-  cacheKey: string,
-  options: { ttl: number; maxSize?: number }
-): TautCache<T> {
-  const { ttl, maxSize } = options
-  const STORAGE_KEY = `taut_cache_${cacheKey}`
+export class Cache<T> {
+  private storageKey: string
+  private ttl: number
+  private maxSize?: number
+  private memory = new Map<string, CacheEntry<T>>()
+  private pending = new Map<string, Promise<T>>()
 
-  const memory = new Map<string, CacheEntry<T>>()
-  const pending = new Map<string, Promise<T>>()
-
-  function fresh(entry: CacheEntry<T>): boolean {
-    return Date.now() - entry.ts < ttl
+  constructor(cacheKey: string, options: { ttl: number; maxSize?: number }) {
+    this.storageKey = `taut_cache_${cacheKey}`
+    this.ttl = options.ttl
+    this.maxSize = options.maxSize
   }
 
-  function persist() {
+  private fresh(entry: CacheEntry<T>): boolean {
+    return Date.now() - entry.ts < this.ttl
+  }
+
+  private persist() {
     try {
       localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(Object.fromEntries(memory))
+        this.storageKey,
+        JSON.stringify(Object.fromEntries(this.memory))
       )
     } catch {}
   }
 
-  function write(key: string, value: T) {
-    memory.set(key, { value, ts: Date.now() })
-    if (maxSize !== undefined && memory.size > maxSize) {
-      for (const k of [...memory.keys()].slice(0, 100)) memory.delete(k)
+  private write(key: string, value: T) {
+    this.memory.set(key, { value, ts: Date.now() })
+    if (this.maxSize !== undefined && this.memory.size > this.maxSize) {
+      for (const k of [...this.memory.keys()].slice(0, 100)) {
+        this.memory.delete(k)
+      }
     }
-    persist()
+    this.persist()
   }
 
-  return {
-    load() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY)
-        if (!raw) return
-        const data = JSON.parse(raw) as Record<string, CacheEntry<T>>
-        for (const [k, entry] of Object.entries(data)) {
-          if (entry && typeof entry.ts === 'number' && fresh(entry)) {
-            memory.set(k, entry)
-          }
+  load() {
+    try {
+      const raw = localStorage.getItem(this.storageKey)
+      if (!raw) return
+      const data = JSON.parse(raw) as Record<string, CacheEntry<T>>
+      for (const [k, entry] of Object.entries(data)) {
+        if (entry && typeof entry.ts === 'number' && this.fresh(entry)) {
+          this.memory.set(k, entry)
         }
-      } catch {}
-    },
-
-    get(key) {
-      const entry = memory.get(key)
-      if (!entry) return undefined
-      if (!fresh(entry)) {
-        memory.delete(key)
-        return undefined
       }
-      return entry.value
-    },
+    } catch {}
+  }
 
-    set(key, value) {
-      write(key, value)
-    },
+  get(key: string): T | undefined {
+    const entry = this.memory.get(key)
+    if (!entry) return undefined
+    if (!this.fresh(entry)) {
+      this.memory.delete(key)
+      return undefined
+    }
+    return entry.value
+  }
 
-    async fetch(key, fetcher) {
-      const entry = memory.get(key)
-      if (entry && fresh(entry)) return entry.value
+  set(key: string, value: T): void {
+    this.write(key, value)
+  }
 
-      const existing = pending.get(key)
-      if (existing) return existing
+  async fetch(key: string, fetcher: () => Promise<T>): Promise<T> {
+    const entry = this.memory.get(key)
+    if (entry && this.fresh(entry)) return entry.value
 
-      const promise = (async () => {
-        try {
-          const value = await fetcher()
-          write(key, value)
-          return value
-        } finally {
-          pending.delete(key)
-        }
-      })()
+    const existing = this.pending.get(key)
+    if (existing) return existing
 
-      pending.set(key, promise)
-      return promise
-    },
-
-    clear() {
-      memory.clear()
-      pending.clear()
+    const promise = (async () => {
       try {
-        localStorage.removeItem(STORAGE_KEY)
-      } catch {}
-    },
+        const value = await fetcher()
+        this.write(key, value)
+        return value
+      } finally {
+        this.pending.delete(key)
+      }
+    })()
+
+    this.pending.set(key, promise)
+    return promise
+  }
+
+  clear(): void {
+    this.memory.clear()
+    this.pending.clear()
+    try {
+      localStorage.removeItem(this.storageKey)
+    } catch {}
   }
 }

@@ -16,7 +16,7 @@ export default class PrivateChannel extends TautPlugin {
   `
   static readonly authors = '<@U06UYA5GMB5>'
 
-  private cache = this.api.createCache<ChannelName>('private_channel_names', {
+  private cache = new this.api.Cache<ChannelName>('private_channel_names', {
     ttl: 1 * 60 * 60 * 1000,
     maxSize: 5000,
   })

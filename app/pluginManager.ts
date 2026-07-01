@@ -13,7 +13,7 @@ import { membersPromise } from './slack/members'
 import { setStyle, removeStyle } from './api/css'
 import { deepEqual } from './helpers'
 import { setupMessageSendDelta } from './api/messageSend'
-import { createCache } from './api/cache'
+import { Cache } from './api/cache'
 import { Store } from './api/store'
 import { AccountSwitcher } from './api/accountSwitcher'
 import { userAPI } from './api/userAPI'
@@ -49,8 +49,7 @@ async function makeTautAPI(bridge: TautBridge) {
       react: await reactPromise,
     },
     onMessageSendDelta: setupMessageSendDelta(patchComponent),
-    // i wish this was a class and not a factory function
-    createCache,
+    Cache,
     Store,
   }
   global.TautAPI = TautAPI

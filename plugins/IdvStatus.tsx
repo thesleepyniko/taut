@@ -17,7 +17,7 @@ export default class IdvStatus extends TautPlugin {
     }
   `
 
-  private cache = this.api.createCache<IdvStatusType>('idv_status', {
+  private cache = new this.api.Cache<IdvStatusType>('idv_status', {
     ttl: 24 * 60 * 60 * 1000,
     maxSize: 5000,
   })

@@ -37,7 +37,7 @@ export default class ClearURLs extends TautPlugin {
     }
   `
 
-  private cache = this.api.createCache<RulesData>('clearurls_rules', {
+  private cache = new this.api.Cache<RulesData>('clearurls_rules', {
     ttl: 7 * 24 * 60 * 60 * 1000,
   })
   private providers: Provider[] = []

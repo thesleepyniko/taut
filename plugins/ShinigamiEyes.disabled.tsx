@@ -57,7 +57,7 @@ export default class ShinigamiEyes extends TautPlugin {
 
   trustLevels: Record<string, trustLevel> = {}
 
-  private cache = this.api.createCache<Record<string, trustLevel>>(
+  private cache = new this.api.Cache<Record<string, trustLevel>>(
     'shinigami_trust_levels',
     { ttl: 24 * 60 * 60 * 1000 }
   )
