@@ -23,6 +23,11 @@ type AccountRowProps = {
 const SIGN_OUT_KEYS = ['sign-out', 'signout-submenu']
 const SWITCHER_KEY = 'taut-account-switcher'
 
+function orgKey(account: StoredAccount): string {
+  const enterpriseId = account.team?.enterprise_id
+  return typeof enterpriseId === 'string' ? enterpriseId : account.teamId
+}
+
 export default class AccountSwitcher extends TautPlugin {
   static readonly pluginName = 'Account Switcher'
   static readonly description =
@@ -37,7 +42,7 @@ export default class AccountSwitcher extends TautPlugin {
 
   private accountsStore = new this.api.Store<StoredAccount[]>([])
   private currentUserId: string | null = null
-  private currentTeamId: string | null = null
+  private currentOrgKey: string | null = null
 
   private SvgIcon: ComponentType<SvgIconProps> = 'span'
   private AccountRow: React.FC<AccountRowProps> = () => null
@@ -95,7 +100,7 @@ export default class AccountSwitcher extends TautPlugin {
         const current = await this.api.accounts.captureCurrent()
         if (current) {
           this.currentUserId = current.userId
-          this.currentTeamId = current.teamId
+          this.currentOrgKey = orgKey(current)
           break
         }
       } catch (err) {
@@ -109,11 +114,11 @@ export default class AccountSwitcher extends TautPlugin {
   private async refresh() {
     try {
       const all = await this.api.accounts.list()
-      // Profiles come from the current workspace's store, so scope to it.
-      const scoped = this.currentTeamId
-        ? all.filter((a) => a.teamId === this.currentTeamId)
+      // Profiles come from the current workspace's store, so scope to it
+      const scoped = this.currentOrgKey
+        ? all.filter((a) => orgKey(a) === this.currentOrgKey)
         : all
-      // Most-recently-saved first, with the current account pinned to the top.
+      // Most-recently-saved first, with the current account pinned to the top
       const sorted = scoped.sort((a, b) => {
         if (a.userId === this.currentUserId) return -1
         if (b.userId === this.currentUserId) return 1
