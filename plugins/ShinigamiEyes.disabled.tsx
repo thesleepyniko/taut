@@ -395,12 +395,12 @@ export default class ShinigamiEyes extends TautPlugin {
     await this.fetchTrustLevelsFromAPI()
   }
 
-  getApiToken(): string | undefined {
+  getAPIToken(): string | undefined {
     return this.config.apiToken
   }
 
   async fetchAuditLogs(slackId: string): Promise<AuditLog[] | null> {
-    const apiToken = this.getApiToken()
+    const apiToken = this.getAPIToken()
     if (!apiToken) return null
 
     try {

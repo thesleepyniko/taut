@@ -2,6 +2,8 @@
 
 import { TautPlugin } from '$taut'
 
+const global = globalThis as any
+
 type IdvStatusType = 'eligible' | 'over_18' | 'unverified' | 'loading'
 
 export default class IdvStatus extends TautPlugin {
