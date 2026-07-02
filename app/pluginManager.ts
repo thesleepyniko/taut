@@ -17,6 +17,8 @@ import { Cache } from './api/cache'
 import { Store } from './api/store'
 import { AccountSwitcher } from './api/accountSwitcher'
 import { userAPI } from './api/userAPI'
+import { modalAPIPromise } from './api/modal'
+import { elementsAPIPromise } from './api/elements'
 
 import {
   TautPlugin,
@@ -45,6 +47,8 @@ async function makeTautAPI(bridge: TautBridge) {
     userAPI,
     cookies: bridge.cookies ?? null,
     accounts: new AccountSwitcher(bridge),
+    modal: await modalAPIPromise,
+    elements: await elementsAPIPromise,
     commonModules: {
       react: await reactPromise,
     },

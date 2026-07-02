@@ -80,9 +80,7 @@ export default class ShinigamiEyes extends TautPlugin {
 
     this.initializeTrustLevels()
 
-    const MrkdwnElement = this.api.findComponent<{
-      text: string
-    }>('MrkdwnElement')
+    const MrkdwnElement = this.api.elements.MrkdwnElement
 
     const instance = this
 

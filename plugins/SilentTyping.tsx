@@ -61,27 +61,9 @@ export default class SilentTyping extends TautPlugin {
       )
     }
 
-    const Tooltip = this.api.findComponent<{
-      tip: string
-      position?: string
-      offsetY?: number
-      delay?: number
-      zIndex?: string
-      children?: React.ReactNode
-    }>('Tooltip')
-    const IconButtonBase = this.api.findComponent<{
-      'size'?: string
-      'className'?: string
-      'aria-pressed'?: string
-      'aria-label'?: string
-      'data-qa'?: string
-      'onClick'?: () => void
-      'tabIndex'?: number
-      'children'?: React.ReactNode
-    }>('IconButtonBase')
-    const SvgIcon = this.api.findComponent<{ name: string; size?: number }>(
-      'SvgIcon'
-    )
+    const Tooltip = this.api.elements.Tooltip
+    const IconButtonBase = this.api.elements.IconButtonBase
+    const SvgIcon = this.api.elements.SvgIcon
 
     this.unpatchButton = this.api.patchComponent<{}>(
       'TextyButtons',

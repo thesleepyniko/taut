@@ -13,7 +13,6 @@ type MenuTemplateItem = {
 }
 
 type MenuFromTemplateProps = { template?: MenuTemplateItem[] }
-type SvgIconProps = { name: string; size?: number; inline?: boolean }
 type AccountRowProps = {
   userId: string
   isCurrent: boolean
@@ -44,7 +43,7 @@ export default class AccountSwitcher extends TautPlugin {
   private currentUserId: string | null = null
   private currentOrgKey: string | null = null
 
-  private SvgIcon: ComponentType<SvgIconProps> = 'span'
+  private SvgIcon = this.api.elements.SvgIcon
   private AccountRow: React.FC<AccountRowProps> = () => null
   private unpatch = () => {}
 
@@ -54,7 +53,6 @@ export default class AccountSwitcher extends TautPlugin {
       return
     }
 
-    this.SvgIcon = this.api.findComponent<SvgIconProps>('SvgIcon')
     this.AccountRow = this.makeAccountRow()
 
     this.unpatch = this.api.patchComponent<MenuFromTemplateProps>(

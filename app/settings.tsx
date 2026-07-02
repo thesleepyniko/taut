@@ -2,11 +2,8 @@
 // Adds a "Taut" tab to Slack's Preferences dialog
 // Shows installed plugins, config info, and credits
 
-import {
-  reactPromise,
-  findComponentPromise,
-  patchComponentPromise,
-} from './slack/react'
+import { reactPromise, patchComponentPromise } from './slack/react'
+import { elementsAPIPromise, type ElementsAPI } from './api/elements'
 import type { ConfigStore } from './configStore'
 import type { PluginManager } from './pluginManager'
 import { initMonaco, type Monaco } from './cdn'
@@ -14,19 +11,7 @@ import { tautVersion } from './bundledData'
 
 type MonacoEditorInstance = ReturnType<Monaco['editor']['create']>
 
-type ButtonProps = {
-  type?: 'primary' | 'ghost' | 'outline' | 'danger'
-  size?: 'small' | 'medium' | 'large'
-  icon?: string
-  href?: string
-  htmlType?: 'button' | 'submit' | 'reset'
-}
-
-let MrkdwnElement: React.ComponentType<{ text: string }>
-let Button: React.ComponentType<
-  ButtonProps &
-    Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof ButtonProps>
->
+let elements: ElementsAPI
 
 export async function addSettingsTab(
   pluginManager: PluginManager,
@@ -36,14 +21,8 @@ export async function addSettingsTab(
 
   void initMonaco()
 
-  const findComponent = await findComponentPromise
+  elements = await elementsAPIPromise
   const patchComponent = await patchComponentPromise
-
-  MrkdwnElement = findComponent<{ text: string }>('MrkdwnElement')
-  Button = findComponent<
-    ButtonProps &
-      Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof ButtonProps>
-  >('Button')
 
   patchComponent<{
     tabs: {
@@ -128,11 +107,11 @@ function TautSettings({
       >
         Taut Settings
       </div>
-      <MrkdwnElement
+      <elements.MrkdwnElement
         text={`<#C0A057686SF> v${tautVersion} | ${loaderName} v${bridge.loaderVersion} | <https://github.com/jeremy46231/taut|Repository>`}
       />
       {paths && (
-        <MrkdwnElement
+        <elements.MrkdwnElement
           text={`Config Directory: \`${paths.display.tautDir}\``}
         />
       )}
@@ -148,7 +127,7 @@ function TautSettings({
         <UserCssEditor configStore={configStore} />
       </div>
       <hr />
-      <MrkdwnElement text="Created by <@U06UYA5GMB5>, <https://github.com/jeremy46231/taut#credits|credits>" />
+      <elements.MrkdwnElement text="Created by <@U06UYA5GMB5>, <https://github.com/jeremy46231/taut#credits|credits>" />
     </div>
   )
 }
@@ -181,9 +160,11 @@ function ConfigEditor({ configStore }: { configStore: ConfigStore }) {
 
   return (
     <div>
-      {paths && <MrkdwnElement text={`Editing \`${paths.display.config}\``} />}
+      {paths && (
+        <elements.MrkdwnElement text={`Editing \`${paths.display.config}\``} />
+      )}
       {!paths && (
-        <MrkdwnElement
+        <elements.MrkdwnElement
           text={`Editing config (stored in ${LOADER_DISPLAY_NAMES[bridge.loader] ?? bridge.loader} storage)`}
         />
       )}
@@ -204,9 +185,9 @@ function ConfigEditor({ configStore }: { configStore: ConfigStore }) {
           marginTop: '8px',
         }}
       >
-        <Button onClick={handleSave} disabled={!dirty || saving}>
+        <elements.Button onClick={handleSave} disabled={!dirty || saving}>
           {saving ? 'Saving...' : 'Save config.jsonc'}
-        </Button>
+        </elements.Button>
         <div style={{ fontSize: '12px', color: 'var(--sk_foreground_low)' }}>
           {dirty ? 'Unsaved changes' : 'Saved'}
         </div>
@@ -243,9 +224,11 @@ function UserCssEditor({ configStore }: { configStore: ConfigStore }) {
 
   return (
     <div>
-      {paths && <MrkdwnElement text={`Editing \`${paths.display.userCss}\``} />}
+      {paths && (
+        <elements.MrkdwnElement text={`Editing \`${paths.display.userCss}\``} />
+      )}
       {!paths && (
-        <MrkdwnElement
+        <elements.MrkdwnElement
           text={`Editing user.css (stored in ${LOADER_DISPLAY_NAMES[bridge.loader] ?? bridge.loader} storage)`}
         />
       )}
@@ -266,9 +249,9 @@ function UserCssEditor({ configStore }: { configStore: ConfigStore }) {
           marginTop: '8px',
         }}
       >
-        <Button onClick={handleSave} disabled={!dirty || saving}>
+        <elements.Button onClick={handleSave} disabled={!dirty || saving}>
           {saving ? 'Saving...' : 'Save user.css'}
-        </Button>
+        </elements.Button>
         <div style={{ fontSize: '12px', color: 'var(--sk_foreground_low)' }}>
           {dirty ? 'Unsaved changes' : 'Saved'}
         </div>
@@ -459,11 +442,11 @@ function PluginList({
               <div>
                 <span style={{ fontWeight: 'bold' }}>{info.name}</span>
                 <div>
-                  <MrkdwnElement text={info.description} />
+                  <elements.MrkdwnElement text={info.description} />
                 </div>
                 <div>
                   <small>
-                    <MrkdwnElement text={`Authors: ${info.authors}`} />
+                    <elements.MrkdwnElement text={`Authors: ${info.authors}`} />
                   </small>
                 </div>
               </div>

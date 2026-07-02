@@ -30,10 +30,7 @@ export default class PrivateChannel extends TautPlugin {
 
     const instance = this
 
-    const SvgIcon = this.api.findComponent<{
-      inline: boolean
-      name: string
-    }>('SvgIcon')
+    const SvgIcon = this.api.elements.SvgIcon
 
     this.unpatchBaseMrkdwnChannel = this.api.patchComponent<{
       isNonExistent: boolean

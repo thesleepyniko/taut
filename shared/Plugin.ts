@@ -6,6 +6,7 @@ import type { TautAPI } from '../app/pluginManager'
 export type { TautAPI } from '../app/pluginManager'
 export type { ComponentType, componentReplacer } from '../app/slack/react'
 export type { StoredAccount } from '../app/api/accountSwitcher'
+export type { OpenModalOptions, ModalHandle } from '../app/api/modal'
 
 export interface TautPluginConfig {
   enabled: boolean
