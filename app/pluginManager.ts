@@ -55,6 +55,7 @@ async function makeTautAPI(bridge: TautBridge) {
     onMessageSendDelta: setupMessageSendDelta(patchComponent),
     Cache,
     Store,
+    presence: bridge.presence ?? null
   }
   global.TautAPI = TautAPI
   console.log('[Taut] TautAPI initialized', TautAPI)

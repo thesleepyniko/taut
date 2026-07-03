@@ -144,6 +144,12 @@ export type TautBridge = {
     remove(details: { url: string; name: string }): Promise<boolean>
   }
 
+  readonly presence?: {
+    start(): Promise<boolean> // returns True if started, False if not available or already running
+    stop(): Promise<boolean> // returns True if stopped, False if not available or already stopped
+    onMessage(cb: (message: unknown) => void) // method to subscribe to messages, payload is raw JSON and it is up to the plugin to parse
+  }
+
   /**
    * Taut-private key/value store for secrets (e.g. saved account tokens),
    * backed by GM storage / `chrome.storage.local` / a file in `tautDir`. Kept
@@ -160,6 +166,11 @@ export type TautBridge = {
    */
   PATHS: TautPaths | null
 }
+
+// RPC messages, will currently only support setting status
+export type TautPresenceMessage =
+  | { op: "set"; text?: string; emoji?: string; ttl?: number}
+  | { op: "clear" }
 
 declare global {
   interface Window {

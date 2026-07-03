@@ -136,6 +136,16 @@ if (isClientPage) {
     },
 
     warnOutdated: () => ipcRenderer.invoke('taut:warn-outdated'),
+
+    presence: {
+      start: () => call("presenceStart", []).catch(() => false),
+      stop: () => call("presenceStop", []).catch(() => false),
+      onMessage: (cb: (msg: unknown) => void) => {
+        const handler = (_: unknown, msg: unknown) => cb(msg)
+        ipcRenderer.on("taut:presence-message", handler)
+        return () => ipcRenderer.removeListener("taut:presence-message", handler)
+      }
+    }
   } satisfies TautBridge)
 
   const doc = new DOMParser().parseFromString(html, 'text/html')

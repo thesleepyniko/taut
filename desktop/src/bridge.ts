@@ -6,6 +6,7 @@ import { ipcMain, session, safeStorage, net } from 'electron'
 import os from 'os'
 import path from 'path'
 import type { DesktopRpc } from './rpc'
+import { createPresenceServer } from './presence'
 
 export interface BridgeConfig {
   configDir: string
@@ -60,9 +61,13 @@ export function setupBridge(
   const configFile = path.join(config.configDir, 'config.jsonc')
   const userCssFile = path.join(config.configDir, 'user.css')
 
+  let mainSender: Electron.WebContents | null = null
+  let presenceServer: ReturnType<typeof createPresenceServer> | null = null
+
   // Config/CSS watchers (set up once at startup)
   ipcMain.handle('taut:setup-watchers', async (event) => {
     const sender = event.sender
+    mainSender = sender
     try {
       await fs.mkdir(config.configDir, { recursive: true })
 
@@ -207,6 +212,17 @@ export function setupBridge(
         console.error('[Taut] cookieRemove failed:', e)
         return false
       }
+      
+    },
+    presenceStart: async () => {
+      if (!mainSender || presenceServer) return false
+      presenceServer = createPresenceServer((msg) => mainSender!.send('taut:presence-message', msg))
+      return true
+    },
+    presenceStop: async () => {
+      presenceServer?.close()
+      presenceServer = null
+      return true
     },
   }
 

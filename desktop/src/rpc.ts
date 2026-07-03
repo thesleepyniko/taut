@@ -34,6 +34,8 @@ export type DesktopRpc = {
   }) => Promise<TautCookie[]>
   cookieSet: (cookie: TautCookie & { url: string }) => Promise<boolean>
   cookieRemove: (details: { url: string; name: string }) => Promise<boolean>
+  presenceStart: () => Promise<boolean>
+  presenceStop: () => Promise<boolean>
 }
 
 export type RpcMethod = keyof DesktopRpc
