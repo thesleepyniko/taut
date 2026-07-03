@@ -92,6 +92,32 @@ PRs are very welcome! You should join the
 [Hack Club Slack](https://hackclub.com/slack) (13-18yo only). I'm
 [@Jeremy](https://hackclub.slack.com/team/U06UYA5GMB5), say hi :D
 
+### Taut Rich Presence
+
+Taut provides a rich presence plugin, which spins up a server that reads from socket at the following locations:
+
+- `$TMPDIR/taut-presence.sock` on MacOS and Linux
+- `\\.\pipe\taut-presence` on Windows
+
+Any commands sent to Taut Rich Presence should be in NDJSON format (meaning that any JSON payloads you send **must** end with a newline).
+
+The command structure roughly follows this format:
+
+```json
+{
+  op: "xyz", // operation here
+  data: ... // any data required for said operation
+}
+```
+
+The following commands are accepted:
+
+- `op: "set"`
+  - Set the current user's status. `text` (string), `emoji` (string), and `ttl` (integer) are accepted pieces of data. 
+  - Text determines the text of the status, emoji determines the emoji displayed (must be provided in :emoji: format), and `ttl` in seconds determines when the status expires.
+- `op: "clear"`
+  - Clear the current user's status. Does not take any extra data.
+
 ## See also
 
 Other Slack tools from the Hack Club community that may interest you:
