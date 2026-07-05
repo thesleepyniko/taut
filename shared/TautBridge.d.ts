@@ -145,9 +145,15 @@ export type TautBridge = {
   }
 
   readonly presence?: {
-    start(): Promise<boolean> // returns True if started, False if not available or already running
-    stop(): Promise<boolean> // returns True if stopped, False if not available or already stopped
+    start(): Promise<PresenceStartResult> // returns True if started, False if not available or already running
+    stop(): Promise<PresenceStopResult> // returns True if stopped, False if not available or already stopped
     onMessage(cb: (message: unknown) => void) // method to subscribe to messages, payload is raw JSON and it is up to the plugin to parse
+  }
+
+  readonly altPresence?: { // methods are the same as presence
+    start(): Promise<PresenceStartResult>
+    stop(): Promise<PresenceStopResult>
+    onMessage(cb: (message: unknown) => void) 
   }
 
   /**
@@ -171,6 +177,19 @@ export type TautBridge = {
 export type TautPresenceMessage =
   | { op: "set"; text?: string; emoji?: string; ttl?: number}
   | { op: "clear" }
+
+export type PresenceStartResult =
+  | { status: 'started' }                            // no handle — plain data only
+  | { status: 'yielded' }
+  | { status: 'already-running' }
+  | { status: 'unavailable'; details: string }
+  | { status: 'error'; details: string }
+
+export type PresenceStopResult =
+  | { status: 'stopped' }
+  | { status: 'already-stopped' }
+  | { status: 'unavailable'; details: string }
+  | { status: 'error'; details: string }
 
 declare global {
   interface Window {

@@ -1,6 +1,6 @@
 // Desktop bridge RPC types
 
-import type { TautCookie } from '../../shared/TautBridge'
+import type { PresenceStartResult, PresenceStopResult, TautCookie } from '../../shared/TautBridge'
 
 export type SerialFetchInit = {
   method?: string
@@ -34,8 +34,10 @@ export type DesktopRpc = {
   }) => Promise<TautCookie[]>
   cookieSet: (cookie: TautCookie & { url: string }) => Promise<boolean>
   cookieRemove: (details: { url: string; name: string }) => Promise<boolean>
-  presenceStart: () => Promise<boolean>
-  presenceStop: () => Promise<boolean>
+  presenceStart: () => Promise<PresenceStartResult>
+  presenceStop: () => Promise<PresenceStopResult>
+  altPresenceStart: () => Promise<PresenceStartResult>
+  altPresenceStop: () => Promise<PresenceStopResult>
 }
 
 export type RpcMethod = keyof DesktopRpc

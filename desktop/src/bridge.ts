@@ -6,7 +6,7 @@ import { ipcMain, session, safeStorage, net } from 'electron'
 import os from 'os'
 import path from 'path'
 import type { DesktopRpc } from './rpc'
-import { createPresenceServer } from './presence'
+import { createAltPresenceServer, createPresenceServer, PresenceServerResult, PresenceServerHandle } from './presence'
 
 export interface BridgeConfig {
   configDir: string
@@ -62,7 +62,8 @@ export function setupBridge(
   const userCssFile = path.join(config.configDir, 'user.css')
 
   let mainSender: Electron.WebContents | null = null
-  let presenceServer: ReturnType<typeof createPresenceServer> | null = null
+  let presenceServer: PresenceServerHandle | null = null
+  let altPresenceServer: PresenceServerHandle | null = null
 
   // Config/CSS watchers (set up once at startup)
   ipcMain.handle('taut:setup-watchers', async (event) => {
@@ -215,15 +216,41 @@ export function setupBridge(
       
     },
     presenceStart: async () => {
-      if (!mainSender || presenceServer) return false
-      presenceServer = createPresenceServer((msg) => mainSender!.send('taut:presence-message', msg))
-      return true
+      if (!mainSender) return { status: "unavailable", details: "No window registered?" }
+      if (presenceServer) return { status: "already-running" }
+      const result = await createPresenceServer((msg) => {
+        mainSender!.send('taut:presence-message', msg)
+      })
+      if (result.status == "started") {
+        presenceServer = { close: result.close }
+        return { status: "started" }
+      } else {
+        return result
+      }
     },
     presenceStop: async () => {
       presenceServer?.close()
       presenceServer = null
-      return true
+      return { status: "stopped" }
     },
+    altPresenceStart: async () => {
+      if (!mainSender) return { status: "unavailable", details: "No window registered?" }
+      if (altPresenceServer) return { status: "already-running" }
+      const result = await createPresenceServer((msg) => {
+        mainSender!.send('taut:alt-presence-message', msg)
+      })
+      if (result.status == "started") {
+        altPresenceServer = { close: result.close }
+        return { status: "started" }
+      } else {
+        return result
+      }
+    },
+    altPresenceStop: async () => {
+      altPresenceServer?.close()
+      altPresenceServer = null
+      return { status: "stopped" }
+    }
   }
 
   ipcMain.handle('taut:rpc', (_event, method: string, args: unknown[]) => {

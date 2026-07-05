@@ -138,12 +138,21 @@ if (isClientPage) {
     warnOutdated: () => ipcRenderer.invoke('taut:warn-outdated'),
 
     presence: {
-      start: () => call("presenceStart", []).catch(() => false),
-      stop: () => call("presenceStop", []).catch(() => false),
+      start: () => call("presenceStart", []).catch(() => ({ status: "unavailable", details: "Presence start failed" })),
+      stop: () => call("presenceStop", []).catch(() => ({ status: "unavailable", details: "Presence stop failed" })),
       onMessage: (cb: (msg: unknown) => void) => {
         const handler = (_: unknown, msg: unknown) => cb(msg)
         ipcRenderer.on("taut:presence-message", handler)
         return () => ipcRenderer.removeListener("taut:presence-message", handler)
+      }
+    },
+    altPresence: {
+      start: () => call("altPresenceStart", []).catch(() => ({ status: "unavailable", details: "Alt presence start failed" })),
+      stop: () => call("altPresenceStop", []).catch(() => ({ status: "unavailable", details: "Alt presence stop failed" })),
+      onMessage: (cb: (msg: unknown) => void) => {
+        const handler = (_: unknown, msg: unknown) => cb(msg)
+        ipcRenderer.on("taut:alt-presence-message", handler)
+        return () => ipcRenderer.removeListener("taut:alt-presence-message", handler)
       }
     }
   } satisfies TautBridge)
